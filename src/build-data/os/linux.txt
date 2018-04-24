@@ -9,6 +9,7 @@ dev_random
 proc_fs
 clock_gettime
 getauxval
+af_alg
 
 # these are not enabled by default as only available in newer kernel/glibc
 #getrandom
