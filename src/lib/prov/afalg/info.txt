@@ -9,7 +9,7 @@ af_alg
 </os_features>
 
 <header:internal>
-af_alg_hash.h
+af_alg_prov.h
 af_alg_util.h
 </header:internal>
 

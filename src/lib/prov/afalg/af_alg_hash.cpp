@@ -4,7 +4,7 @@
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <botan/internal/af_alg_hash.h>
+#include <botan/internal/af_alg_prov.h>
 #include <botan/internal/af_alg_util.h>
 #include <botan/hash.h>
 #include <botan/exceptn.h>

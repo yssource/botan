@@ -36,7 +36,7 @@ class AF_Alg_Socket final
          std::strcpy(reinterpret_cast<char*>(sa.salg_name), name.c_str());
 
          if(::bind(m_algo_fd, (struct sockaddr *)&sa, sizeof(sa)) < 0)
-            throw Exception("Unknown AF_ALG algorithm"); // presumably
+            throw Exception("Unknown AF_ALG algorithm '" + name + "'"); // presumably
 
          m_op_fd = ::accept(m_algo_fd, nullptr, nullptr);
          if(m_op_fd < 0)
@@ -51,6 +51,18 @@ class AF_Alg_Socket final
 
       AF_Alg_Socket(const AF_Alg_Socket&) = delete;
       AF_Alg_Socket& operator=(const AF_Alg_Socket&) = delete;
+
+      size_t max_bytes_per_request()
+         {
+         // TODO get actual page size
+         return (4096 * 16);
+         }
+
+      void set_key(const uint8_t key[], size_t key_len)
+         {
+         if(::setsockopt(m_algo_fd, SOL_ALG, ALG_SET_KEY, key, key_len) < 0)
+            throw Exception("AF_ALG error setting key");
+         }
 
       void write_data(const uint8_t buf[], size_t len, bool more) const
          {

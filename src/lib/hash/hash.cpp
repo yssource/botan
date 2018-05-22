@@ -102,7 +102,7 @@
 #endif
 
 #if defined(BOTAN_HAS_AF_ALG)
-  #include <botan/internal/af_alg_hash.h>
+  #include <botan/internal/af_alg_prov.h>
 #endif
 
 namespace Botan {

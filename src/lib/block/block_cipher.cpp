@@ -102,6 +102,10 @@
   #include <botan/internal/commoncrypto.h>
 #endif
 
+#if defined(BOTAN_HAS_AF_ALG)
+  #include <botan/internal/af_alg_prov.h>
+#endif
+
 namespace Botan {
 
 std::unique_ptr<BlockCipher>
@@ -127,6 +131,13 @@ BlockCipher::create(const std::string& algo,
 
       if(!provider.empty())
          return nullptr;
+      }
+#endif
+
+#if defined(BOTAN_HAS_AF_ALG)
+   if(provider == "af_alg")
+      {
+      return create_af_alg_block_cipher(algo);
       }
 #endif
 
@@ -357,7 +368,7 @@ BlockCipher::create_or_throw(const std::string& algo,
 
 std::vector<std::string> BlockCipher::providers(const std::string& algo)
    {
-   return probe_providers_of<BlockCipher>(algo, { "base", "openssl", "commoncrypto" });
+   return probe_providers_of<BlockCipher>(algo, { "base", "openssl", "commoncrypto", "af_alg" });
    }
 
 }
