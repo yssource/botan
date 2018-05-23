@@ -13,3 +13,6 @@ af_alg_prov.h
 af_alg_util.h
 </header:internal>
 
+<libs>
+all -> kcapi
+</libs>

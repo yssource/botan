@@ -9,6 +9,8 @@
 #include <botan/hash.h>
 #include <botan/exceptn.h>
 
+#include <kcapi.h>
+
 namespace Botan {
 
 namespace {

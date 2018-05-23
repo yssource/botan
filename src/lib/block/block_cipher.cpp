@@ -137,7 +137,11 @@ BlockCipher::create(const std::string& algo,
 #if defined(BOTAN_HAS_AF_ALG)
    if(provider == "af_alg")
       {
-      return create_af_alg_block_cipher(algo);
+      if(auto bc = create_af_alg_block_cipher(algo))
+         return bc;
+
+      if(!provider.empty())
+         return nullptr;
       }
 #endif
 

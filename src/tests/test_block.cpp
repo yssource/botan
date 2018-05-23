@@ -55,6 +55,11 @@ class Block_Cipher_Tests final : public Text_Based_Test
                continue;
                }
 
+            if(cipher->valid_keylength(key.size()) == false)
+               {
+               continue;
+               }
+
             const std::string provider(cipher->provider());
             result.test_is_nonempty("provider", provider);
             result.test_eq(provider, cipher->name(), algo);

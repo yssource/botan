@@ -37,6 +37,10 @@
   #include <botan/internal/openssl.h>
 #endif
 
+#if defined(BOTAN_HAS_AF_ALG)
+  #include <botan/internal/af_alg_prov.h>
+#endif
+
 namespace Botan {
 
 std::unique_ptr<StreamCipher> StreamCipher::create(const std::string& algo_spec,
@@ -44,9 +48,19 @@ std::unique_ptr<StreamCipher> StreamCipher::create(const std::string& algo_spec,
    {
    const SCAN_Name req(algo_spec);
 
-#if defined(BOTAN_HAS_CTR_BE)
    if((req.algo_name() == "CTR-BE" || req.algo_name() == "CTR") && req.arg_count_between(1,2))
       {
+         printf("provider =%s\n", provider.c_str());
+#if defined(BOTAN_HAS_AF_ALG)
+      if(provider == "af_alg" && req.arg_count() == 1)
+         {
+         auto cipher = create_af_alg_ctr_mode(req.arg(0));
+         if(cipher)
+            return cipher;
+         }
+#endif
+
+#if defined(BOTAN_HAS_CTR_BE)
       if(provider.empty() || provider == "base")
          {
          auto cipher = BlockCipher::create(req.arg(0));
@@ -56,8 +70,8 @@ std::unique_ptr<StreamCipher> StreamCipher::create(const std::string& algo_spec,
             return std::unique_ptr<StreamCipher>(new CTR_BE(cipher.release(), ctr_size));
             }
          }
-      }
 #endif
+      }
 
 #if defined(BOTAN_HAS_CHACHA)
    if(req.algo_name() == "ChaCha")
@@ -143,7 +157,7 @@ StreamCipher::create_or_throw(const std::string& algo,
 
 std::vector<std::string> StreamCipher::providers(const std::string& algo_spec)
    {
-   return probe_providers_of<StreamCipher>(algo_spec, {"base", "openssl"});
+   return probe_providers_of<StreamCipher>(algo_spec, {"base", "openssl", "af_alg" });
    }
 
 }

@@ -141,9 +141,16 @@ class Stream_Cipher_Tests final : public Text_Based_Test
                cipher->set_iv(nonce.data(), nonce.size());
                }
 
-            if(seek != 0)
+            try
                {
-               cipher->seek(seek);
+               if(seek != 0)
+                  {
+                  cipher->seek(seek);
+                  }
+               }
+            catch(Botan::Not_Implemented&)
+               {
+               continue;
                }
 
             // Test that clone works and does not affect parent object
