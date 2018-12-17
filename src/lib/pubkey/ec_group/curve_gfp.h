@@ -15,6 +15,10 @@
 
 namespace Botan {
 
+/**
+* This is an unstable internal API that should not be used by applications.
+* It is only exposed for ABI reasons.
+*/
 class BOTAN_UNSTABLE_API CurveGFp_Repr
    {
    public:

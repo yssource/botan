@@ -435,25 +435,26 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
 
    secure_vector<word>& ws = scope.get().get_word_vector();
 
-   std::vector<BigInt> c(points.size());
-   c[0] = points[0].m_coord_z;
+   std::vector<BigInt*> c;
+   c.push_back(&points[0].m_coord_z);
 
    for(size_t i = 1; i != points.size(); ++i)
       {
-      curve.mul(c[i], c[i-1], points[i].m_coord_z, ws);
+      c.push_back(&scope.get());
+      curve.mul(*c[i], *c[i-1], points[i].m_coord_z, ws);
       }
 
-   BigInt s_inv = curve.invert_element(c[c.size()-1], ws);
+   BigInt s_inv = curve.invert_element(*c[c.size()-1], ws);
 
-   BigInt z_inv = scope.get();
-   BigInt z2_inv = scope.get();
-   BigInt z3_inv = scope.get();
+   BigInt& z_inv = scope.get();
+   BigInt& z2_inv = scope.get();
+   BigInt& z3_inv = scope.get();
 
    for(size_t i = points.size() - 1; i != 0; i--)
       {
       PointGFp& point = points[i];
 
-      curve.mul(z_inv, s_inv, c[i-1], ws);
+      curve.mul(z_inv, s_inv, *c[i-1], ws);
 
       s_inv = curve.mul_to_tmp(s_inv, point.m_coord_z, ws);
 
