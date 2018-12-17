@@ -60,22 +60,22 @@ class CurveGFp_Montgomery final : public CurveGFp_Repr
 
       size_t get_ws_size() const override { return 2*m_p_words + 4; }
 
-      BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const override;
+      BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const override;
 
-      void to_curve_rep(BigInt& x, secure_vector<word>& ws) const override;
+      void to_curve_rep(BigInt& x, BigInt::Pool& pool) const override;
 
-      void from_curve_rep(BigInt& x, secure_vector<word>& ws) const override;
+      void from_curve_rep(BigInt& x, BigInt::Pool& pool) const override;
 
       void curve_mul_words(BigInt& z,
                            const word x_words[],
                            const size_t x_size,
                            const BigInt& y,
-                           secure_vector<word>& ws) const override;
+                           BigInt::Pool& pool) const override;
 
       void curve_sqr_words(BigInt& z,
                            const word x_words[],
                            size_t x_size,
-                           secure_vector<word>& ws) const override;
+                           BigInt::Pool& pool) const override;
 
    private:
       BigInt m_p;
@@ -91,23 +91,25 @@ class CurveGFp_Montgomery final : public CurveGFp_Repr
       bool m_a_is_minus_3;
    };
 
-BigInt CurveGFp_Montgomery::invert_element(const BigInt& x, secure_vector<word>& ws) const
+BigInt CurveGFp_Montgomery::invert_element(const BigInt& x, BigInt::Pool& pool) const
    {
    // Should we use Montgomery inverse instead?
    const BigInt inv = inverse_mod(x, m_p);
    BigInt res;
-   curve_mul(res, inv, m_r3, ws);
+   curve_mul(res, inv, m_r3, pool);
    return res;
    }
 
-void CurveGFp_Montgomery::to_curve_rep(BigInt& x, secure_vector<word>& ws) const
+void CurveGFp_Montgomery::to_curve_rep(BigInt& x, BigInt::Pool& pool) const
    {
    const BigInt tx = x;
-   curve_mul(x, tx, m_r2, ws);
+   curve_mul(x, tx, m_r2, pool);
    }
 
-void CurveGFp_Montgomery::from_curve_rep(BigInt& z, secure_vector<word>& ws) const
+void CurveGFp_Montgomery::from_curve_rep(BigInt& z, BigInt::Pool& pool) const
    {
+   BigInt::Pool::Scope scope(pool);
+   secure_vector<word>& ws = scope.get().get_word_vector();
    if(ws.size() < get_ws_size())
       ws.resize(get_ws_size());
 
@@ -124,10 +126,12 @@ void CurveGFp_Montgomery::curve_mul_words(BigInt& z,
                                           const word x_w[],
                                           size_t x_size,
                                           const BigInt& y,
-                                          secure_vector<word>& ws) const
+                                          BigInt::Pool& pool) const
    {
    BOTAN_DEBUG_ASSERT(y.sig_words() <= m_p_words);
 
+   BigInt::Pool::Scope scope(pool);
+   secure_vector<word>& ws = scope.get().get_word_vector();
    if(ws.size() < get_ws_size())
       ws.resize(get_ws_size());
 
@@ -148,8 +152,10 @@ void CurveGFp_Montgomery::curve_mul_words(BigInt& z,
 void CurveGFp_Montgomery::curve_sqr_words(BigInt& z,
                                           const word x[],
                                           size_t x_size,
-                                          secure_vector<word>& ws) const
+                                          BigInt::Pool& pool) const
    {
+   BigInt::Pool::Scope scope(pool);
+   secure_vector<word>& ws = scope.get().get_word_vector();
    if(ws.size() < get_ws_size())
       ws.resize(get_ws_size());
 
@@ -194,38 +200,46 @@ class CurveGFp_NIST : public CurveGFp_Repr
 
       bool is_one(const BigInt& x) const override { return x == 1; }
 
-      void to_curve_rep(BigInt& x, secure_vector<word>& ws) const override
-         { redc_mod_p(x, ws); }
+      void to_curve_rep(BigInt& x, BigInt::Pool& pool) const override
+         {
+         BigInt::Pool::Scope scope(pool);
+         secure_vector<word>& ws = scope.get().get_word_vector();
+         redc_mod_p(x, ws);
+         }
 
-      void from_curve_rep(BigInt& x, secure_vector<word>& ws) const override
-         { redc_mod_p(x, ws); }
+      void from_curve_rep(BigInt& x, BigInt::Pool& pool) const override
+         {
+         BigInt::Pool::Scope scope(pool);
+         secure_vector<word>& ws = scope.get().get_word_vector();
+         redc_mod_p(x, ws);
+         }
 
       virtual void redc_mod_p(BigInt& z, secure_vector<word>& ws) const = 0;
 
-      BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const override;
+      BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const override;
 
       void curve_mul_words(BigInt& z,
                            const word x_words[],
                            const size_t x_size,
                            const BigInt& y,
-                           secure_vector<word>& ws) const override;
+                           BigInt::Pool& pool) const override;
 
-      void curve_mul_tmp(BigInt& x, const BigInt& y, BigInt& tmp, secure_vector<word>& ws) const
+      void curve_mul_tmp(BigInt& x, const BigInt& y, BigInt& tmp, BigInt::Pool& pool) const
          {
-         curve_mul(tmp, x, y, ws);
+         curve_mul(tmp, x, y, pool);
          x.swap(tmp);
          }
 
-      void curve_sqr_tmp(BigInt& x, BigInt& tmp, secure_vector<word>& ws) const
+      void curve_sqr_tmp(BigInt& x, BigInt& tmp, BigInt::Pool& pool) const
          {
-         curve_sqr(tmp, x, ws);
+         curve_sqr(tmp, x, pool);
          x.swap(tmp);
          }
 
       void curve_sqr_words(BigInt& z,
                            const word x_words[],
                            size_t x_size,
-                           secure_vector<word>& ws) const override;
+                           BigInt::Pool& pool) const override;
    private:
       // Curve parameters
       BigInt m_1;
@@ -233,9 +247,9 @@ class CurveGFp_NIST : public CurveGFp_Repr
       size_t m_p_words; // cache of m_p.sig_words()
    };
 
-BigInt CurveGFp_NIST::invert_element(const BigInt& x, secure_vector<word>& ws) const
+BigInt CurveGFp_NIST::invert_element(const BigInt& x, BigInt::Pool& pool) const
    {
-   BOTAN_UNUSED(ws);
+   BOTAN_UNUSED(pool);
    return inverse_mod(x, get_p());
    }
 
@@ -243,10 +257,12 @@ void CurveGFp_NIST::curve_mul_words(BigInt& z,
                                     const word x_w[],
                                     size_t x_size,
                                     const BigInt& y,
-                                    secure_vector<word>& ws) const
+                                    BigInt::Pool& pool) const
    {
    BOTAN_DEBUG_ASSERT(y.sig_words() <= m_p_words);
 
+   BigInt::Pool::Scope scope(pool);
+   secure_vector<word>& ws = scope.get().get_word_vector();
    if(ws.size() < get_ws_size())
       ws.resize(get_ws_size());
 
@@ -263,8 +279,10 @@ void CurveGFp_NIST::curve_mul_words(BigInt& z,
    }
 
 void CurveGFp_NIST::curve_sqr_words(BigInt& z, const word x[], size_t x_size,
-                                    secure_vector<word>& ws) const
+                                    BigInt::Pool& pool) const
    {
+   BigInt::Pool::Scope scope(pool);
+   secure_vector<word>& ws = scope.get().get_word_vector();
    if(ws.size() < get_ws_size())
       ws.resize(get_ws_size());
 
@@ -313,67 +331,75 @@ class CurveGFp_P256 final : public CurveGFp_NIST
       const BigInt& get_p() const override { return prime_p256(); }
    private:
       void redc_mod_p(BigInt& x, secure_vector<word>& ws) const override { redc_p256(x, ws); }
-      BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const override;
+      BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const override;
    };
 
-BigInt CurveGFp_P256::invert_element(const BigInt& x, secure_vector<word>& ws) const
+BigInt CurveGFp_P256::invert_element(const BigInt& x, BigInt::Pool& pool) const
    {
-   BigInt r, p2, p4, p8, p16, p32, tmp;
+   BigInt r;
 
-   curve_sqr(r, x, ws);
+   BigInt::Pool::Scope scope(pool);
+   BigInt& p2 = scope.get();
+   BigInt& p4 = scope.get();
+   BigInt& p8 = scope.get();
+   BigInt& p16 = scope.get();
+   BigInt& p32 = scope.get();
+   BigInt& tmp = scope.get();
 
-   curve_mul(p2, r, x, ws);
-   curve_sqr(r, p2, ws);
-   curve_sqr_tmp(r, tmp, ws);
+   curve_sqr(r, x, pool);
 
-   curve_mul(p4, r, p2, ws);
+   curve_mul(p2, r, x, pool);
+   curve_sqr(r, p2, pool);
+   curve_sqr_tmp(r, tmp, pool);
 
-   curve_sqr(r, p4, ws);
+   curve_mul(p4, r, p2, pool);
+
+   curve_sqr(r, p4, pool);
    for(size_t i = 0; i != 3; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul(p8, r, p4, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul(p8, r, p4, pool);
 
-   curve_sqr(r, p8, ws);
+   curve_sqr(r, p8, pool);
    for(size_t i = 0; i != 7; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul(p16, r, p8, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul(p16, r, p8, pool);
 
-   curve_sqr(r, p16, ws);
+   curve_sqr(r, p16, pool);
    for(size_t i = 0; i != 15; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul(p32, r, p16, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul(p32, r, p16, pool);
 
-   curve_sqr(r, p32, ws);
+   curve_sqr(r, p32, pool);
    for(size_t i = 0; i != 31; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
 
    for(size_t i = 0; i != 32*4; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, p32, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, p32, tmp, pool);
 
    for(size_t i = 0; i != 32; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, p32, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, p32, tmp, pool);
 
    for(size_t i = 0; i != 16; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, p16, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, p16, tmp, pool);
    for(size_t i = 0; i != 8; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, p8, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, p8, tmp, pool);
 
    for(size_t i = 0; i != 4; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, p4, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, p4, tmp, pool);
 
    for(size_t i = 0; i != 2; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, p2, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, p2, tmp, pool);
 
    for(size_t i = 0; i != 2; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
 
    return r;
    }
@@ -388,78 +414,86 @@ class CurveGFp_P384 final : public CurveGFp_NIST
       const BigInt& get_p() const override { return prime_p384(); }
    private:
       void redc_mod_p(BigInt& x, secure_vector<word>& ws) const override { redc_p384(x, ws); }
-      BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const override;
+      BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const override;
    };
 
-BigInt CurveGFp_P384::invert_element(const BigInt& x, secure_vector<word>& ws) const
+BigInt CurveGFp_P384::invert_element(const BigInt& x, BigInt::Pool& pool) const
    {
    // From https://briansmith.org/ecc-inversion-addition-chains-01
 
-   BigInt r, x2, x3, x15, x30, tmp, rl;
+   BigInt r;
+
+   BigInt::Pool::Scope scope(pool);
+   BigInt& x2 = scope.get();
+   BigInt& x3 = scope.get();
+   BigInt& x15 = scope.get();
+   BigInt& x30 = scope.get();
+   BigInt& tmp = scope.get();
+   BigInt& rl = scope.get();
 
    r = x;
-   curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+   curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
    x2 = r;
 
-   curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+   curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
 
    x3 = r;
 
    for(size_t i = 0; i != 3; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x3, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x3, tmp, pool);
 
    rl = r;
    for(size_t i = 0; i != 6; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, rl, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, rl, tmp, pool);
 
    for(size_t i = 0; i != 3; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x3, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x3, tmp, pool);
 
    x15 = r;
    for(size_t i = 0; i != 15; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x15, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x15, tmp, pool);
 
    x30 = r;
    for(size_t i = 0; i != 30; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x30, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x30, tmp, pool);
 
    rl = r;
    for(size_t i = 0; i != 60; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, rl, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, rl, tmp, pool);
 
    rl = r;
    for(size_t i = 0; i != 120; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, rl, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, rl, tmp, pool);
 
    for(size_t i = 0; i != 15; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x15, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x15, tmp, pool);
 
    for(size_t i = 0; i != 31; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x30, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x30, tmp, pool);
 
    for(size_t i = 0; i != 2; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x2, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x2, tmp, pool);
 
    for(size_t i = 0; i != 94; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x30, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x30, tmp, pool);
 
    for(size_t i = 0; i != 2; ++i)
-      curve_sqr_tmp(r, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
 
-   curve_mul_tmp(r, x, tmp, ws);
+   curve_mul_tmp(r, x, tmp, pool);
 
    return r;
    }
@@ -474,74 +508,76 @@ class CurveGFp_P521 final : public CurveGFp_NIST
       const BigInt& get_p() const override { return prime_p521(); }
    private:
       void redc_mod_p(BigInt& x, secure_vector<word>& ws) const override { redc_p521(x, ws); }
-      BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const override;
+      BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const override;
    };
 
-BigInt CurveGFp_P521::invert_element(const BigInt& x, secure_vector<word>& ws) const
+BigInt CurveGFp_P521::invert_element(const BigInt& x, BigInt::Pool& pool) const
    {
    // Addition chain from https://eprint.iacr.org/2014/852.pdf section
 
    BigInt r;
-   BigInt rl;
-   BigInt a7;
-   BigInt tmp;
 
-   curve_sqr(r, x, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+   BigInt::Pool::Scope scope(pool);
+   BigInt& rl = scope.get();
+   BigInt& a7 = scope.get();
+   BigInt& tmp = scope.get();
 
-   curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+   curve_sqr(r, x, pool);
+   curve_mul_tmp(r, x, tmp, pool);
+
+   curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
 
    rl = r;
 
    for(size_t i = 0; i != 3; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, rl, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, rl, tmp, pool);
 
-   curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+   curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
    a7 = r; // need this value later
 
-   curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, x, tmp, ws);
+   curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, x, tmp, pool);
 
    rl = r;
    for(size_t i = 0; i != 8; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, rl, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, rl, tmp, pool);
 
    rl = r;
    for(size_t i = 0; i != 16; ++i)
-      curve_sqr_tmp(r, tmp, ws);
-   curve_mul_tmp(r, rl, tmp, ws);
+      curve_sqr_tmp(r, tmp, pool);
+   curve_mul_tmp(r, rl, tmp, pool);
 
     rl = r;
     for(size_t i = 0; i != 32; ++i)
-        curve_sqr_tmp(r, tmp, ws);
-    curve_mul_tmp(r, rl, tmp, ws);
+        curve_sqr_tmp(r, tmp, pool);
+    curve_mul_tmp(r, rl, tmp, pool);
 
     rl = r;
     for(size_t i = 0; i != 64; ++i)
-        curve_sqr_tmp(r, tmp, ws);
-    curve_mul_tmp(r, rl, tmp, ws);
+        curve_sqr_tmp(r, tmp, pool);
+    curve_mul_tmp(r, rl, tmp, pool);
 
     rl = r;
     for(size_t i = 0; i != 128; ++i)
-        curve_sqr_tmp(r, tmp, ws);
-    curve_mul_tmp(r, rl, tmp, ws);
+        curve_sqr_tmp(r, tmp, pool);
+    curve_mul_tmp(r, rl, tmp, pool);
 
     rl = r;
     for(size_t i = 0; i != 256; ++i)
-        curve_sqr_tmp(r, tmp, ws);
-    curve_mul_tmp(r, rl, tmp, ws);
+        curve_sqr_tmp(r, tmp, pool);
+    curve_mul_tmp(r, rl, tmp, pool);
 
     for(size_t i = 0; i != 7; ++i)
-        curve_sqr_tmp(r, tmp, ws);
-    curve_mul_tmp(r, a7, tmp, ws);
+        curve_sqr_tmp(r, tmp, pool);
+    curve_mul_tmp(r, a7, tmp, pool);
 
     for(size_t i = 0; i != 2; ++i)
-       curve_sqr_tmp(r, tmp, ws);
-    curve_mul_tmp(r, x, tmp, ws);
+       curve_sqr_tmp(r, tmp, pool);
+    curve_mul_tmp(r, x, tmp, pool);
 
     return r;
    }

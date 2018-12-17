@@ -53,36 +53,36 @@ class BOTAN_UNSTABLE_API CurveGFp_Repr
       */
       virtual const BigInt& get_1_rep() const = 0;
 
-      virtual BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const = 0;
+      virtual BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const = 0;
 
-      virtual void to_curve_rep(BigInt& x, secure_vector<word>& ws) const = 0;
+      virtual void to_curve_rep(BigInt& x, BigInt::Pool& pool) const = 0;
 
-      virtual void from_curve_rep(BigInt& x, secure_vector<word>& ws) const = 0;
+      virtual void from_curve_rep(BigInt& x, BigInt::Pool& pool) const = 0;
 
       void curve_mul(BigInt& z, const BigInt& x, const BigInt& y,
-                     secure_vector<word>& ws) const
+                     BigInt::Pool& pool) const
          {
          BOTAN_DEBUG_ASSERT(x.sig_words() <= get_p_words());
-         curve_mul_words(z, x.data(), x.size(), y, ws);
+         curve_mul_words(z, x.data(), x.size(), y, pool);
          }
 
       virtual void curve_mul_words(BigInt& z,
                                    const word x_words[],
                                    const size_t x_size,
                                    const BigInt& y,
-                                   secure_vector<word>& ws) const = 0;
+                                   BigInt::Pool& pool) const = 0;
 
       void curve_sqr(BigInt& z, const BigInt& x,
-                             secure_vector<word>& ws) const
+                             BigInt::Pool& pool) const
          {
          BOTAN_DEBUG_ASSERT(x.sig_words() <= get_p_words());
-         curve_sqr_words(z, x.data(), x.size(), ws);
+         curve_sqr_words(z, x.data(), x.size(), pool);
          }
 
       virtual void curve_sqr_words(BigInt& z,
                                    const word x_words[],
                                    size_t x_size,
-                                   secure_vector<word>& ws) const = 0;
+                                   BigInt::Pool& pool) const = 0;
    };
 
 /**
@@ -149,72 +149,72 @@ class BOTAN_UNSTABLE_API CurveGFp final
 
       bool is_one(const BigInt& x) const { return m_repr->is_one(x); }
 
-      BigInt invert_element(const BigInt& x, secure_vector<word>& ws) const
+      BigInt invert_element(const BigInt& x, BigInt::Pool& pool) const
          {
-         return m_repr->invert_element(x, ws);
+         return m_repr->invert_element(x, pool);
          }
 
-      void to_rep(BigInt& x, secure_vector<word>& ws) const
+      void to_rep(BigInt& x, BigInt::Pool& pool) const
          {
-         m_repr->to_curve_rep(x, ws);
+         m_repr->to_curve_rep(x, pool);
          }
 
-      void from_rep(BigInt& x, secure_vector<word>& ws) const
+      void from_rep(BigInt& x, BigInt::Pool& pool) const
          {
-         m_repr->from_curve_rep(x, ws);
+         m_repr->from_curve_rep(x, pool);
          }
 
-      BigInt from_rep(const BigInt& x, secure_vector<word>& ws) const
+      BigInt from_rep(const BigInt& x, BigInt::Pool& pool) const
          {
          BigInt xt(x);
-         m_repr->from_curve_rep(xt, ws);
+         m_repr->from_curve_rep(xt, pool);
          return xt;
          }
 
       // TODO: from_rep taking && ref
 
-      void mul(BigInt& z, const BigInt& x, const BigInt& y, secure_vector<word>& ws) const
+      void mul(BigInt& z, const BigInt& x, const BigInt& y, BigInt::Pool& pool) const
          {
-         m_repr->curve_mul(z, x, y, ws);
+         m_repr->curve_mul(z, x, y, pool);
          }
 
       void mul(BigInt& z, const word x_w[], size_t x_size,
-               const BigInt& y, secure_vector<word>& ws) const
+               const BigInt& y, BigInt::Pool& pool) const
          {
-         m_repr->curve_mul_words(z, x_w, x_size, y, ws);
+         m_repr->curve_mul_words(z, x_w, x_size, y, pool);
          }
 
-      void sqr(BigInt& z, const BigInt& x, secure_vector<word>& ws) const
+      void sqr(BigInt& z, const BigInt& x, BigInt::Pool& pool) const
          {
-         m_repr->curve_sqr(z, x, ws);
+         m_repr->curve_sqr(z, x, pool);
          }
 
-      void sqr(BigInt& z, const word x_w[], size_t x_size, secure_vector<word>& ws) const
+      void sqr(BigInt& z, const word x_w[], size_t x_size, BigInt::Pool& pool) const
          {
-         m_repr->curve_sqr_words(z, x_w, x_size, ws);
+         m_repr->curve_sqr_words(z, x_w, x_size, pool);
          }
 
-      BigInt mul(const BigInt& x, const BigInt& y, secure_vector<word>& ws) const
+      BigInt mul(const BigInt& x, const BigInt& y, BigInt::Pool& pool) const
          {
-         return mul_to_tmp(x, y, ws);
+         return mul_to_tmp(x, y, pool);
          }
 
-      BigInt sqr(const BigInt& x, secure_vector<word>& ws) const
+      BigInt sqr(const BigInt& x, BigInt::Pool& pool) const
          {
-         return sqr_to_tmp(x, ws);
+         return sqr_to_tmp(x, pool);
          }
 
-      BigInt mul_to_tmp(const BigInt& x, const BigInt& y, secure_vector<word>& ws) const
+      BigInt mul_to_tmp(const BigInt& x, const BigInt& y, BigInt::Pool& pool) const
          {
          BigInt z;
-         m_repr->curve_mul(z, x, y, ws);
+         m_repr->curve_mul(z, x, y, pool);
          return z;
          }
 
-      BigInt sqr_to_tmp(const BigInt& x, secure_vector<word>& ws) const
+      BigInt sqr_to_tmp(const BigInt& x, BigInt::Pool& pool) const
          {
          BigInt z;
-         m_repr->curve_sqr(z, x, ws);
+         m_repr->curve_sqr(z, x, pool);
          return z;
          }
 

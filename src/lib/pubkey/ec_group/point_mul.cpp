@@ -219,7 +219,6 @@ PointGFp_Var_Point_Precompute::PointGFp_Var_Point_Precompute(const PointGFp& poi
       BigInt& new_x = scope.get();
       BigInt& new_y = scope.get();
       BigInt& new_z = scope.get();
-      secure_vector<word>& tmp = scope.get().get_word_vector();
 
       const CurveGFp& curve = U[0].get_curve();
 
@@ -232,12 +231,12 @@ PointGFp_Var_Point_Precompute::PointGFp_Var_Point_Precompute(const PointGFp& poi
          // Easy way of ensuring mask != 0
          mask.set_bit(0);
 
-         curve.sqr(mask2, mask, tmp);
-         curve.mul(mask3, mask, mask2, tmp);
+         curve.sqr(mask2, mask, pool);
+         curve.mul(mask3, mask, mask2, pool);
 
-         curve.mul(new_x, U[i].get_x(), mask2, tmp);
-         curve.mul(new_y, U[i].get_y(), mask3, tmp);
-         curve.mul(new_z, U[i].get_z(), mask, tmp);
+         curve.mul(new_x, U[i].get_x(), mask2, pool);
+         curve.mul(new_y, U[i].get_y(), mask3, pool);
+         curve.mul(new_z, U[i].get_z(), mask, pool);
 
          U[i].swap_coords(new_x, new_y, new_z);
          }

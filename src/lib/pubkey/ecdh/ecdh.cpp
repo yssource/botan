@@ -44,7 +44,7 @@ class ECDH_KA_Operation final : public PK_Ops::Key_Agreement_with_KDF
          const PointGFp S = m_group.blinded_var_point_multiply(
             input_point, m_l_times_priv, m_rng, m_pool);
 
-         if(S.on_the_curve() == false)
+         if(S.on_the_curve(m_pool) == false)
             throw Internal_Error("ECDH agreed value was not on the curve");
          return BigInt::encode_1363(S.get_affine_x(), m_group.get_p_bytes());
          }

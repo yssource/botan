@@ -142,13 +142,33 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       * get affine x coordinate
       * @result affine x coordinate
       */
-      BigInt get_affine_x() const;
+      BigInt get_affine_x(BigInt::Pool& pool) const;
 
       /**
       * get affine y coordinate
       * @result affine y coordinate
       */
-      BigInt get_affine_y() const;
+      BigInt get_affine_y(BigInt::Pool& pool) const;
+
+      /**
+      * get affine x coordinate
+      * @result affine x coordinate
+      */
+      BigInt get_affine_x() const
+         {
+         BigInt::Pool pool;
+         return get_affine_x(pool);
+         }
+
+      /**
+      * get affine y coordinate
+      * @result affine y coordinate
+      */
+      BigInt get_affine_y() const
+         {
+         BigInt::Pool pool;
+         return get_affine_x(pool);
+         }
 
       const BigInt& get_x() const { return m_coord_x; }
       const BigInt& get_y() const { return m_coord_y; }
@@ -185,7 +205,18 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       * curve; used to prevent fault attacks.
       * @return if the point is on the curve
       */
-      bool on_the_curve() const;
+      bool on_the_curve(BigInt::Pool& pool) const;
+
+      /**
+      * Checks whether the point is to be found on the underlying
+      * curve; used to prevent fault attacks.
+      * @return if the point is on the curve
+      */
+      bool on_the_curve() const
+         {
+         BigInt::Pool pool;
+         return on_the_curve(pool);
+         }
 
       /**
       * swaps the states of *this and other, does not throw!

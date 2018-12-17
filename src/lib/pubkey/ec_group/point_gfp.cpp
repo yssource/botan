@@ -35,9 +35,9 @@ PointGFp::PointGFp(const CurveGFp& curve, const BigInt& x, const BigInt& y) :
    if(y <= 0 || y >= curve.get_p())
       throw Invalid_Argument("Invalid PointGFp affine y");
 
-   secure_vector<word> monty_ws(m_curve.get_ws_size());
-   m_curve.to_rep(m_coord_x, monty_ws);
-   m_curve.to_rep(m_coord_y, monty_ws);
+   BigInt::Pool pool;
+   m_curve.to_rep(m_coord_x, pool);
+   m_curve.to_rep(m_coord_y, pool);
    }
 
 void PointGFp::randomize_repr(RandomNumberGenerator& rng)
@@ -58,13 +58,13 @@ void PointGFp::randomize_repr(RandomNumberGenerator& rng, BigInt::Pool& pool)
    * //m_curve.to_rep(mask, ws);
    */
    BigInt::Pool::Scope scope(pool);
-   secure_vector<word>& ws = scope.get().get_word_vector();
-   const BigInt mask2 = m_curve.sqr_to_tmp(mask, ws);
-   const BigInt mask3 = m_curve.mul_to_tmp(mask2, mask, ws);
 
-   m_coord_x = m_curve.mul_to_tmp(m_coord_x, mask2, ws);
-   m_coord_y = m_curve.mul_to_tmp(m_coord_y, mask3, ws);
-   m_coord_z = m_curve.mul_to_tmp(m_coord_z, mask, ws);
+   const BigInt mask2 = m_curve.sqr_to_tmp(mask, pool);
+   const BigInt mask3 = m_curve.mul_to_tmp(mask2, mask, pool);
+
+   m_coord_x = m_curve.mul_to_tmp(m_coord_x, mask2, pool);
+   m_coord_y = m_curve.mul_to_tmp(m_coord_y, mask3, pool);
+   m_coord_z = m_curve.mul_to_tmp(m_coord_z, mask, pool);
    }
 
 namespace {
@@ -98,7 +98,6 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
 
    BigInt::Pool::Scope scope(pool);
 
-   secure_vector<word>& ws = scope.get().get_word_vector();
    secure_vector<word>& sub_ws = scope.get().get_word_vector();
 
    BigInt& T0 = scope.get();
@@ -114,11 +113,11 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
 
    const BigInt& p = m_curve.get_p();
 
-   m_curve.sqr(T3, m_coord_z, ws); // z1^2
-   m_curve.mul(T4, x_words, x_size, T3, ws); // x2*z1^2
+   m_curve.sqr(T3, m_coord_z, pool); // z1^2
+   m_curve.mul(T4, x_words, x_size, T3, pool); // x2*z1^2
 
-   m_curve.mul(T2, m_coord_z, T3, ws); // z1^3
-   m_curve.mul(T0, y_words, y_size, T2, ws); // y2*z1^3
+   m_curve.mul(T2, m_coord_z, T3, pool); // z1^3
+   m_curve.mul(T0, y_words, y_size, T2, pool); // y2*z1^3
 
    T4.mod_sub(m_coord_x, p, sub_ws); // x2*z1^2 - x1*z2^2
 
@@ -139,13 +138,13 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
       return;
       }
 
-   m_curve.sqr(T2, T4, ws);
+   m_curve.sqr(T2, T4, pool);
 
-   m_curve.mul(T3, m_coord_x, T2, ws);
+   m_curve.mul(T3, m_coord_x, T2, pool);
 
-   m_curve.mul(T1, T2, T4, ws);
+   m_curve.mul(T1, T2, T4, pool);
 
-   m_curve.sqr(m_coord_x, T0, ws);
+   m_curve.sqr(m_coord_x, T0, pool);
    m_coord_x.mod_sub(T1, p, sub_ws);
 
    m_coord_x.mod_sub(T3, p, sub_ws);
@@ -153,12 +152,12 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
 
    T3.mod_sub(m_coord_x, p, sub_ws);
 
-   m_curve.mul(T2, T0, T3, ws);
-   m_curve.mul(T0, m_coord_y, T1, ws);
+   m_curve.mul(T2, T0, T3, pool);
+   m_curve.mul(T0, m_coord_y, T1, pool);
    T2.mod_sub(T0, p, sub_ws);
    m_coord_y.swap(T2);
 
-   m_curve.mul(T0, m_coord_z, T4, ws);
+   m_curve.mul(T0, m_coord_z, T4, pool);
    m_coord_z.swap(T0);
    }
 
@@ -180,7 +179,6 @@ void PointGFp::add(const word x_words[], size_t x_size,
 
    BigInt::Pool::Scope scope(pool);
 
-   secure_vector<word>& ws = scope.get().get_word_vector();
    secure_vector<word>& sub_ws = scope.get().get_word_vector();
 
    BigInt& T0 = scope.get();
@@ -196,16 +194,16 @@ void PointGFp::add(const word x_words[], size_t x_size,
 
    const BigInt& p = m_curve.get_p();
 
-   m_curve.sqr(T0, z_words, z_size, ws); // z2^2
-   m_curve.mul(T1, m_coord_x, T0, ws); // x1*z2^2
-   m_curve.mul(T3, z_words, z_size, T0, ws); // z2^3
-   m_curve.mul(T2, m_coord_y, T3, ws); // y1*z2^3
+   m_curve.sqr(T0, z_words, z_size, pool); // z2^2
+   m_curve.mul(T1, m_coord_x, T0, pool); // x1*z2^2
+   m_curve.mul(T3, z_words, z_size, T0, pool); // z2^3
+   m_curve.mul(T2, m_coord_y, T3, pool); // y1*z2^3
 
-   m_curve.sqr(T3, m_coord_z, ws); // z1^2
-   m_curve.mul(T4, x_words, x_size, T3, ws); // x2*z1^2
+   m_curve.sqr(T3, m_coord_z, pool); // z1^2
+   m_curve.mul(T4, x_words, x_size, T3, pool); // x2*z1^2
 
-   m_curve.mul(T5, m_coord_z, T3, ws); // z1^3
-   m_curve.mul(T0, y_words, y_size, T5, ws); // y2*z1^3
+   m_curve.mul(T5, m_coord_z, T3, pool); // z1^3
+   m_curve.mul(T0, y_words, y_size, T5, pool); // y2*z1^3
 
    T4.mod_sub(T1, p, sub_ws); // x2*z1^2 - x1*z2^2
 
@@ -226,26 +224,26 @@ void PointGFp::add(const word x_words[], size_t x_size,
       return;
       }
 
-   m_curve.sqr(T5, T4, ws);
+   m_curve.sqr(T5, T4, pool);
 
-   m_curve.mul(T3, T1, T5, ws);
+   m_curve.mul(T3, T1, T5, pool);
 
-   m_curve.mul(T1, T5, T4, ws);
+   m_curve.mul(T1, T5, T4, pool);
 
-   m_curve.sqr(m_coord_x, T0, ws);
+   m_curve.sqr(m_coord_x, T0, pool);
    m_coord_x.mod_sub(T1, p, sub_ws);
    m_coord_x.mod_sub(T3, p, sub_ws);
    m_coord_x.mod_sub(T3, p, sub_ws);
 
    T3.mod_sub(m_coord_x, p, sub_ws);
 
-   m_curve.mul(m_coord_y, T0, T3, ws);
-   m_curve.mul(T3, T2, T1, ws);
+   m_curve.mul(m_coord_y, T0, T3, pool);
+   m_curve.mul(T3, T2, T1, pool);
 
    m_coord_y.mod_sub(T3, p, sub_ws);
 
-   m_curve.mul(T3, z_words, z_size, m_coord_z, ws);
-   m_curve.mul(m_coord_z, T3, T4, ws);
+   m_curve.mul(T3, z_words, z_size, m_coord_z, pool);
+   m_curve.mul(m_coord_z, T3, T4, pool);
    }
 
 void PointGFp::mult2i(size_t iterations, BigInt::Pool& pool)
@@ -281,7 +279,6 @@ void PointGFp::mult2(BigInt::Pool& pool)
 
    BigInt::Pool::Scope scope(pool);
 
-   secure_vector<word>& ws = scope.get().get_word_vector();
    secure_vector<word>& sub_ws = scope.get().get_word_vector();
 
    BigInt& T0 = scope.get();
@@ -295,15 +292,15 @@ void PointGFp::mult2(BigInt::Pool& pool)
    */
    const BigInt& p = m_curve.get_p();
 
-   m_curve.sqr(T0, m_coord_y, ws);
+   m_curve.sqr(T0, m_coord_y, pool);
 
-   m_curve.mul(T1, m_coord_x, T0, ws);
+   m_curve.mul(T1, m_coord_x, T0, pool);
    T1.mod_mul(4, p, sub_ws);
 
    if(m_curve.a_is_zero())
       {
       // if a == 0 then 3*x^2 + a*z^4 is just 3*x^2
-      m_curve.sqr(T4, m_coord_x, ws); // x^2
+      m_curve.sqr(T4, m_coord_x, pool); // x^2
       T4.mod_mul(3, p, sub_ws); // 3*x^2
       }
    else if(m_curve.a_is_minus_3())
@@ -312,7 +309,7 @@ void PointGFp::mult2(BigInt::Pool& pool)
       if a == -3 then
         3*x^2 + a*z^4 == 3*x^2 - 3*z^4 == 3*(x^2-z^4) == 3*(x-z^2)*(x+z^2)
       */
-      m_curve.sqr(T3, m_coord_z, ws); // z^2
+      m_curve.sqr(T3, m_coord_z, pool); // z^2
 
       // (x-z^2)
       T2 = m_coord_x;
@@ -321,36 +318,36 @@ void PointGFp::mult2(BigInt::Pool& pool)
       // (x+z^2)
       T3.mod_add(m_coord_x, p, sub_ws);
 
-      m_curve.mul(T4, T2, T3, ws); // (x-z^2)*(x+z^2)
+      m_curve.mul(T4, T2, T3, pool); // (x-z^2)*(x+z^2)
 
       T4.mod_mul(3, p, sub_ws); // 3*(x-z^2)*(x+z^2)
       }
    else
       {
-      m_curve.sqr(T3, m_coord_z, ws); // z^2
-      m_curve.sqr(T4, T3, ws); // z^4
-      m_curve.mul(T3, m_curve.get_a_rep(), T4, ws); // a*z^4
+      m_curve.sqr(T3, m_coord_z, pool); // z^2
+      m_curve.sqr(T4, T3, pool); // z^4
+      m_curve.mul(T3, m_curve.get_a_rep(), T4, pool); // a*z^4
 
-      m_curve.sqr(T4, m_coord_x, ws); // x^2
+      m_curve.sqr(T4, m_coord_x, pool); // x^2
       T4.mod_mul(3, p, sub_ws);
       T4.mod_add(T3, p, sub_ws); // 3*x^2 + a*z^4
       }
 
-   m_curve.sqr(T2, T4, ws);
+   m_curve.sqr(T2, T4, pool);
    T2.mod_sub(T1, p, sub_ws);
    T2.mod_sub(T1, p, sub_ws);
 
-   m_curve.sqr(T3, T0, ws);
+   m_curve.sqr(T3, T0, pool);
    T3.mod_mul(8, p, sub_ws);
 
    T1.mod_sub(T2, p, sub_ws);
 
-   m_curve.mul(T0, T4, T1, ws);
+   m_curve.mul(T0, T4, T1, pool);
    T0.mod_sub(T3, p, sub_ws);
 
    m_coord_x.swap(T2);
 
-   m_curve.mul(T2, m_coord_y, m_coord_z, ws);
+   m_curve.mul(T2, m_coord_y, m_coord_z, pool);
    T2.mod_mul(2, p, sub_ws);
 
    m_coord_y.swap(T0);
@@ -433,18 +430,16 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
    const CurveGFp& curve = points[0].m_curve;
    const BigInt& rep_1 = curve.get_1_rep();
 
-   secure_vector<word>& ws = scope.get().get_word_vector();
-
    std::vector<BigInt*> c;
    c.push_back(&points[0].m_coord_z);
 
    for(size_t i = 1; i != points.size(); ++i)
       {
       c.push_back(&scope.get());
-      curve.mul(*c[i], *c[i-1], points[i].m_coord_z, ws);
+      curve.mul(*c[i], *c[i-1], points[i].m_coord_z, pool);
       }
 
-   BigInt s_inv = curve.invert_element(*c[c.size()-1], ws);
+   BigInt s_inv = curve.invert_element(*c[c.size()-1], pool);
 
    BigInt& z_inv = scope.get();
    BigInt& z2_inv = scope.get();
@@ -454,21 +449,21 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
       {
       PointGFp& point = points[i];
 
-      curve.mul(z_inv, s_inv, *c[i-1], ws);
+      curve.mul(z_inv, s_inv, *c[i-1], pool);
 
-      s_inv = curve.mul_to_tmp(s_inv, point.m_coord_z, ws);
+      s_inv = curve.mul_to_tmp(s_inv, point.m_coord_z, pool);
 
-      curve.sqr(z2_inv, z_inv, ws);
-      curve.mul(z3_inv, z2_inv, z_inv, ws);
-      point.m_coord_x = curve.mul_to_tmp(point.m_coord_x, z2_inv, ws);
-      point.m_coord_y = curve.mul_to_tmp(point.m_coord_y, z3_inv, ws);
+      curve.sqr(z2_inv, z_inv, pool);
+      curve.mul(z3_inv, z2_inv, z_inv, pool);
+      point.m_coord_x = curve.mul_to_tmp(point.m_coord_x, z2_inv, pool);
+      point.m_coord_y = curve.mul_to_tmp(point.m_coord_y, z3_inv, pool);
       point.m_coord_z = rep_1;
       }
 
-   curve.sqr(z2_inv, s_inv, ws);
-   curve.mul(z3_inv, z2_inv, s_inv, ws);
-   points[0].m_coord_x = curve.mul_to_tmp(points[0].m_coord_x, z2_inv, ws);
-   points[0].m_coord_y = curve.mul_to_tmp(points[0].m_coord_y, z3_inv, ws);
+   curve.sqr(z2_inv, s_inv, pool);
+   curve.mul(z3_inv, z2_inv, s_inv, pool);
+   points[0].m_coord_x = curve.mul_to_tmp(points[0].m_coord_x, z2_inv, pool);
+   points[0].m_coord_y = curve.mul_to_tmp(points[0].m_coord_y, z3_inv, pool);
    points[0].m_coord_z = rep_1;
    }
 
@@ -477,13 +472,12 @@ void PointGFp::force_affine()
    if(is_zero())
       throw Invalid_State("Cannot convert zero ECC point to affine");
 
-   secure_vector<word> ws;
-
-   const BigInt z_inv = m_curve.invert_element(m_coord_z, ws);
-   const BigInt z2_inv = m_curve.sqr_to_tmp(z_inv, ws);
-   const BigInt z3_inv = m_curve.mul_to_tmp(z_inv, z2_inv, ws);
-   m_coord_x = m_curve.mul_to_tmp(m_coord_x, z2_inv, ws);
-   m_coord_y = m_curve.mul_to_tmp(m_coord_y, z3_inv, ws);
+   BigInt::Pool pool;
+   const BigInt z_inv = m_curve.invert_element(m_coord_z, pool);
+   const BigInt z2_inv = m_curve.sqr_to_tmp(z_inv, pool);
+   const BigInt z3_inv = m_curve.mul_to_tmp(z_inv, z2_inv, pool);
+   m_coord_x = m_curve.mul_to_tmp(m_coord_x, z2_inv, pool);
+   m_coord_y = m_curve.mul_to_tmp(m_coord_y, z3_inv, pool);
    m_coord_z = m_curve.get_1_rep();
    }
 
@@ -492,46 +486,44 @@ bool PointGFp::is_affine() const
    return m_curve.is_one(m_coord_z);
    }
 
-BigInt PointGFp::get_affine_x() const
+BigInt PointGFp::get_affine_x(BigInt::Pool& pool) const
    {
    if(is_zero())
       throw Illegal_Transformation("Cannot convert zero point to affine");
 
-   secure_vector<word> monty_ws;
-
    if(is_affine())
-      return m_curve.from_rep(m_coord_x, monty_ws);
+      return m_curve.from_rep(m_coord_x, pool);
 
-   BigInt z2 = m_curve.sqr_to_tmp(m_coord_z, monty_ws);
-   z2 = m_curve.invert_element(z2, monty_ws);
+   BigInt::Pool::Scope scope(pool);
+   BigInt& z2 = scope.get();
+   m_curve.sqr(z2, m_coord_z, pool);
+   z2 = m_curve.invert_element(z2, pool);
 
    BigInt r;
-   m_curve.mul(r, m_coord_x, z2, monty_ws);
-   m_curve.from_rep(r, monty_ws);
+   m_curve.mul(r, m_coord_x, z2, pool);
+   m_curve.from_rep(r, pool);
    return r;
    }
 
-BigInt PointGFp::get_affine_y() const
+BigInt PointGFp::get_affine_y(BigInt::Pool& pool) const
    {
    if(is_zero())
       throw Illegal_Transformation("Cannot convert zero point to affine");
 
-   secure_vector<word> monty_ws;
-
    if(is_affine())
-      return m_curve.from_rep(m_coord_y, monty_ws);
+      return m_curve.from_rep(m_coord_y, pool);
 
-   const BigInt z2 = m_curve.sqr_to_tmp(m_coord_z, monty_ws);
-   const BigInt z3 = m_curve.mul_to_tmp(m_coord_z, z2, monty_ws);
-   const BigInt z3_inv = m_curve.invert_element(z3, monty_ws);
+   const BigInt z2 = m_curve.sqr_to_tmp(m_coord_z, pool);
+   const BigInt z3 = m_curve.mul_to_tmp(m_coord_z, z2, pool);
+   const BigInt z3_inv = m_curve.invert_element(z3, pool);
 
    BigInt r;
-   m_curve.mul(r, m_coord_y, z3_inv, monty_ws);
-   m_curve.from_rep(r, monty_ws);
+   m_curve.mul(r, m_coord_y, z3_inv, pool);
+   m_curve.from_rep(r, pool);
    return r;
    }
 
-bool PointGFp::on_the_curve() const
+bool PointGFp::on_the_curve(BigInt::Pool& pool) const
    {
    /*
    Is the point still on the curve?? (If everything is correct, the
@@ -542,24 +534,42 @@ bool PointGFp::on_the_curve() const
    if(is_zero())
       return true;
 
-   secure_vector<word> monty_ws;
+   BigInt::Pool::Scope scope(pool);
+   BigInt& y2 = scope.get();
+   BigInt& x2 = scope.get();
+   BigInt& x3 = scope.get();
+   BigInt& ax = scope.get();
+   BigInt& z2 = scope.get();
 
-   const BigInt y2 = m_curve.from_rep(m_curve.sqr_to_tmp(m_coord_y, monty_ws), monty_ws);
-   const BigInt x3 = m_curve.mul_to_tmp(m_coord_x, m_curve.sqr_to_tmp(m_coord_x, monty_ws), monty_ws);
-   const BigInt ax = m_curve.mul_to_tmp(m_coord_x, m_curve.get_a_rep(), monty_ws);
-   const BigInt z2 = m_curve.sqr_to_tmp(m_coord_z, monty_ws);
+   m_curve.sqr(z2, m_coord_z, pool);
+
+   m_curve.sqr(y2, m_coord_y, pool);
+   m_curve.from_rep(y2, pool); // why??!
+
+   m_curve.sqr(x2, m_coord_x, pool);
+   m_curve.mul(x3, x2, m_coord_x, pool);
+   m_curve.mul(ax, m_coord_x, m_curve.get_a_rep(), pool);
 
    if(m_coord_z == z2) // Is z equal to 1 (in Montgomery form)?
       {
-      if(y2 != m_curve.from_rep(x3 + ax + m_curve.get_b_rep(), monty_ws))
+      if(y2 != m_curve.from_rep(x3 + ax + m_curve.get_b_rep(), pool))
          return false;
       }
 
-   const BigInt z3 = m_curve.mul_to_tmp(m_coord_z, z2, monty_ws);
-   const BigInt ax_z4 = m_curve.mul_to_tmp(ax, m_curve.sqr_to_tmp(z2, monty_ws), monty_ws);
-   const BigInt b_z6 = m_curve.mul_to_tmp(m_curve.get_b_rep(), m_curve.sqr_to_tmp(z3, monty_ws), monty_ws);
+   BigInt& z3 = scope.get();
+   BigInt& z4 = scope.get();
+   BigInt& z6 = scope.get();
+   BigInt& ax_z4 = scope.get();
+   BigInt& b_z6 = scope.get();
 
-   if(y2 != m_curve.from_rep(x3 + ax_z4 + b_z6, monty_ws))
+   m_curve.mul(z3, z2, m_coord_z, pool);
+   m_curve.sqr(z4, z2, pool);
+   m_curve.sqr(z6, z3, pool);
+
+   m_curve.mul(ax_z4, ax, z4, pool);
+   m_curve.mul(b_z6, m_curve.get_b_rep(), z6, pool);
+
+   if(y2 != m_curve.from_rep(x3 + ax_z4 + b_z6, pool))
       return false;
 
    return true;
@@ -583,8 +593,9 @@ bool PointGFp::operator==(const PointGFp& other) const
    if(is_zero())
       return other.is_zero();
 
-   return (get_affine_x() == other.get_affine_x() &&
-           get_affine_y() == other.get_affine_y());
+   BigInt::Pool pool;
+   return (get_affine_x(pool) == other.get_affine_x(pool) &&
+           get_affine_y(pool) == other.get_affine_y(pool));
    }
 
 // encoding and decoding
@@ -595,8 +606,9 @@ std::vector<uint8_t> PointGFp::encode(PointGFp::Compression_Type format) const
 
    const size_t p_bytes = m_curve.get_p().bytes();
 
-   const BigInt x = get_affine_x();
-   const BigInt y = get_affine_y();
+   BigInt::Pool pool;
+   const BigInt x = get_affine_x(pool);
+   const BigInt y = get_affine_y(pool);
 
    std::vector<uint8_t> result;
 

@@ -566,7 +566,7 @@ BigInt EC_Group::blinded_base_point_multiply_x(const BigInt& k,
 
    if(pt.is_zero())
       return 0;
-   return pt.get_affine_x();
+   return pt.get_affine_x(pool);
    }
 
 BigInt EC_Group::random_scalar(RandomNumberGenerator& rng) const
