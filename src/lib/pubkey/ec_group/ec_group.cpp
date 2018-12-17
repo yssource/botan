@@ -107,9 +107,9 @@ class EC_Group_Data final
 
       PointGFp blinded_base_point_multiply(const BigInt& k,
                                            RandomNumberGenerator& rng,
-                                           std::vector<BigInt>& ws) const
+                                           BigInt::Pool& pool) const
          {
-         return m_base_mult.mul(k, rng, m_order, ws);
+         return m_base_mult.mul(k, rng, m_order, pool);
          }
 
    private:
@@ -553,16 +553,16 @@ PointGFp EC_Group::point_multiply(const BigInt& x, const PointGFp& pt, const Big
 
 PointGFp EC_Group::blinded_base_point_multiply(const BigInt& k,
                                                RandomNumberGenerator& rng,
-                                               std::vector<BigInt>& ws) const
+                                               BigInt::Pool& pool) const
    {
-   return data().blinded_base_point_multiply(k, rng, ws);
+   return data().blinded_base_point_multiply(k, rng, pool);
    }
 
 BigInt EC_Group::blinded_base_point_multiply_x(const BigInt& k,
                                                RandomNumberGenerator& rng,
-                                               std::vector<BigInt>& ws) const
+                                               BigInt::Pool& pool) const
    {
-   const PointGFp pt = data().blinded_base_point_multiply(k, rng, ws);
+   const PointGFp pt = data().blinded_base_point_multiply(k, rng, pool);
 
    if(pt.is_zero())
       return 0;
@@ -577,10 +577,10 @@ BigInt EC_Group::random_scalar(RandomNumberGenerator& rng) const
 PointGFp EC_Group::blinded_var_point_multiply(const PointGFp& point,
                                               const BigInt& k,
                                               RandomNumberGenerator& rng,
-                                              std::vector<BigInt>& ws) const
+                                              BigInt::Pool& pool) const
    {
-   PointGFp_Var_Point_Precompute mul(point, rng, ws);
-   return mul.mul(k, rng, get_order(), ws);
+   PointGFp_Var_Point_Precompute mul(point, rng, pool);
+   return mul.mul(k, rng, get_order(), pool);
    }
 
 PointGFp EC_Group::zero_point() const

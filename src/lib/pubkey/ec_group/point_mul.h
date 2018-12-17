@@ -22,7 +22,7 @@ class PointGFp_Base_Point_Precompute final
       PointGFp mul(const BigInt& k,
                    RandomNumberGenerator& rng,
                    const BigInt& group_order,
-                   std::vector<BigInt>& ws) const;
+                   BigInt::Pool& pool) const;
    private:
       const PointGFp& m_base_point;
       const Modular_Reducer& m_mod_order;
@@ -31,7 +31,6 @@ class PointGFp_Base_Point_Precompute final
       enum { WINDOW_SIZE = (1 << WINDOW_BITS) - 1 };
 
       const size_t m_p_words;
-      const size_t m_T_size;
 
       /*
       * This is a table of T_size * 3*p_word words
@@ -44,12 +43,12 @@ class PointGFp_Var_Point_Precompute final
    public:
       PointGFp_Var_Point_Precompute(const PointGFp& point,
                                     RandomNumberGenerator& rng,
-                                    std::vector<BigInt>& ws);
+                                    BigInt::Pool& pool);
 
       PointGFp mul(const BigInt& k,
                    RandomNumberGenerator& rng,
                    const BigInt& group_order,
-                   std::vector<BigInt>& ws) const;
+                   BigInt::Pool& pool) const;
    private:
       const CurveGFp m_curve;
       const size_t m_p_words;

@@ -53,8 +53,6 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
          HYBRID       = 2
       };
 
-      enum { WORKSPACE_SIZE = 8 };
-
       /**
       * Construct an uninitialized PointGFp
       */
@@ -172,7 +170,7 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       * Force all points on the list to affine coordinates
       */
       static void force_all_affine(std::vector<PointGFp>& points,
-                                   secure_vector<word>& ws);
+                                   BigInt::Pool& pool);
 
       bool is_affine() const;
 
@@ -205,7 +203,7 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       * Randomize the point representation
       * The actual value (get_affine_x, get_affine_y) does not change
       */
-      void randomize_repr(RandomNumberGenerator& rng, secure_vector<word>& ws);
+      void randomize_repr(RandomNumberGenerator& rng, BigInt::Pool& pool);
 
       /**
       * Equality operator
@@ -215,9 +213,8 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       /**
       * Point addition
       * @param other the point to add to *this
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       */
-      void add(const PointGFp& other, std::vector<BigInt>& workspace)
+      void add(const PointGFp& other, BigInt::Pool& pool)
          {
          BOTAN_ASSERT_NOMSG(m_curve == other.m_curve);
 
@@ -226,7 +223,7 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
          add(other.m_coord_x.data(), std::min(p_words, other.m_coord_x.size()),
              other.m_coord_y.data(), std::min(p_words, other.m_coord_y.size()),
              other.m_coord_z.data(), std::min(p_words, other.m_coord_z.size()),
-             workspace);
+             pool);
          }
 
       /**
@@ -238,19 +235,17 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       * @param y_size size of y_words
       * @param z_words the words of the z coordinate of the other point
       * @param z_size size of z_words
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       */
       void add(const word x_words[], size_t x_size,
                const word y_words[], size_t y_size,
                const word z_words[], size_t z_size,
-               std::vector<BigInt>& workspace);
+               BigInt::Pool& pool);
 
       /**
       * Point addition - mixed J+A
       * @param other affine point to add - assumed to be affine!
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       */
-      void add_affine(const PointGFp& other, std::vector<BigInt>& workspace)
+      void add_affine(const PointGFp& other, BigInt::Pool& pool)
          {
          BOTAN_ASSERT_NOMSG(m_curve == other.m_curve);
          BOTAN_DEBUG_ASSERT(other.is_affine());
@@ -258,7 +253,7 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
          const size_t p_words = m_curve.get_p_words();
          add_affine(other.m_coord_x.data(), std::min(p_words, other.m_coord_x.size()),
                     other.m_coord_y.data(), std::min(p_words, other.m_coord_y.size()),
-                    workspace);
+                    pool);
          }
 
       /**
@@ -268,47 +263,42 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       * @param x_size size of x_words
       * @param y_words the words of the y coordinate of the other point
       * @param y_size size of y_words
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       */
       void add_affine(const word x_words[], size_t x_size,
                       const word y_words[], size_t y_size,
-                      std::vector<BigInt>& workspace);
+                      BigInt::Pool& pool);
 
       /**
       * Point doubling
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       */
-      void mult2(std::vector<BigInt>& workspace);
+      void mult2(BigInt::Pool& pool);
 
       /**
       * Repeated point doubling
       * @param i number of doublings to perform
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       */
-      void mult2i(size_t i, std::vector<BigInt>& workspace);
+      void mult2i(size_t i, BigInt::Pool& pool);
 
       /**
       * Point addition
       * @param other the point to add to *this
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       * @return other plus *this
       */
-      PointGFp plus(const PointGFp& other, std::vector<BigInt>& workspace) const
+      PointGFp plus(const PointGFp& other, BigInt::Pool& pool) const
          {
          PointGFp x = (*this);
-         x.add(other, workspace);
+         x.add(other, pool);
          return x;
          }
 
       /**
       * Point doubling
-      * @param workspace temp space, at least WORKSPACE_SIZE elements
       * @return *this doubled
       */
-      PointGFp double_of(std::vector<BigInt>& workspace) const
+      PointGFp double_of(BigInt::Pool& pool) const
          {
          PointGFp x = (*this);
-         x.mult2(workspace);
+         x.mult2(pool);
          return x;
          }
 
@@ -428,7 +418,7 @@ class BOTAN_PUBLIC_API(2,0) BOTAN_DEPRECATED("Use alternative APIs") Blinded_Poi
 
       PointGFp blinded_multiply(const BigInt& scalar, RandomNumberGenerator& rng);
    private:
-      std::vector<BigInt> m_ws;
+      BigInt::Pool m_pool;
       const BigInt& m_order;
       std::unique_ptr<PointGFp_Var_Point_Precompute> m_point_mul;
    };

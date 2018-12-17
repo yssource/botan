@@ -273,7 +273,7 @@ class ECDSA_Timing_Test final : public Timing_Test
       const Botan::EC_Group m_group;
       const Botan::ECDSA_PrivateKey m_privkey;
       const Botan::BigInt& m_x;
-      std::vector<Botan::BigInt> m_ws;
+      Botan::BigInt::Pool m_pool;
    };
 
 ECDSA_Timing_Test::ECDSA_Timing_Test(std::string ecgroup)
@@ -292,7 +292,7 @@ ticks ECDSA_Timing_Test::measure_critical_function(std::vector<uint8_t> input)
    //The following ECDSA operations involve and should not leak any information about k.
 
    const Botan::BigInt k_inv = m_group.inverse_mod_order(k);
-   const Botan::PointGFp k_times_P = m_group.blinded_base_point_multiply(k, Timing_Test::timing_test_rng(), m_ws);
+   const Botan::PointGFp k_times_P = m_group.blinded_base_point_multiply(k, Timing_Test::timing_test_rng(), m_pool);
    const Botan::BigInt r = m_group.mod_order(k_times_P.get_affine_x());
    const Botan::BigInt s = m_group.multiply_mod_order(k_inv, mul_add(m_x, r, msg));
 
@@ -318,7 +318,7 @@ class ECC_Mul_Timing_Test final : public Timing_Test
 
    private:
       const Botan::EC_Group m_group;
-      std::vector<Botan::BigInt> m_ws;
+      Botan::BigInt::Pool m_pool;
    };
 
 ticks ECC_Mul_Timing_Test::measure_critical_function(std::vector<uint8_t> input)
@@ -327,7 +327,7 @@ ticks ECC_Mul_Timing_Test::measure_critical_function(std::vector<uint8_t> input)
 
    ticks start = get_ticks();
 
-   const Botan::PointGFp k_times_P = m_group.blinded_base_point_multiply(k, Timing_Test::timing_test_rng(), m_ws);
+   const Botan::PointGFp k_times_P = m_group.blinded_base_point_multiply(k, Timing_Test::timing_test_rng(), m_pool);
 
    ticks end = get_ticks();
 

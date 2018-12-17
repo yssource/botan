@@ -42,11 +42,11 @@ PointGFp::PointGFp(const CurveGFp& curve, const BigInt& x, const BigInt& y) :
 
 void PointGFp::randomize_repr(RandomNumberGenerator& rng)
    {
-   secure_vector<word> ws(m_curve.get_ws_size());
-   randomize_repr(rng, ws);
+   BigInt::Pool pool;
+   randomize_repr(rng, pool);
    }
 
-void PointGFp::randomize_repr(RandomNumberGenerator& rng, secure_vector<word>& ws)
+void PointGFp::randomize_repr(RandomNumberGenerator& rng, BigInt::Pool& pool)
    {
    const BigInt mask = BigInt::random_integer(rng, 2, m_curve.get_p());
 
@@ -57,6 +57,8 @@ void PointGFp::randomize_repr(RandomNumberGenerator& rng, secure_vector<word>& w
    * representation.
    * //m_curve.to_rep(mask, ws);
    */
+   BigInt::Pool::Scope scope(pool);
+   secure_vector<word>& ws = scope.get().get_word_vector();
    const BigInt mask2 = m_curve.sqr_to_tmp(mask, ws);
    const BigInt mask3 = m_curve.mul_to_tmp(mask2, mask, ws);
 
@@ -66,16 +68,6 @@ void PointGFp::randomize_repr(RandomNumberGenerator& rng, secure_vector<word>& w
    }
 
 namespace {
-
-inline void resize_ws(std::vector<BigInt>& ws_bn, size_t cap_size)
-   {
-   BOTAN_ASSERT(ws_bn.size() >= PointGFp::WORKSPACE_SIZE,
-                "Expected size for PointGFp workspace");
-
-   for(size_t i = 0; i != ws_bn.size(); ++i)
-      if(ws_bn[i].size() < cap_size)
-         ws_bn[i].get_word_vector().resize(cap_size);
-   }
 
 inline word all_zeros(const word x[], size_t len)
    {
@@ -89,7 +81,7 @@ inline word all_zeros(const word x[], size_t len)
 
 void PointGFp::add_affine(const word x_words[], size_t x_size,
                           const word y_words[], size_t y_size,
-                          std::vector<BigInt>& ws_bn)
+                          BigInt::Pool& pool)
    {
    if(all_zeros(x_words, x_size) & all_zeros(y_words, y_size))
       {
@@ -104,16 +96,16 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
       return;
       }
 
-   resize_ws(ws_bn, m_curve.get_ws_size());
+   BigInt::Pool::Scope scope(pool);
 
-   secure_vector<word>& ws = ws_bn[0].get_word_vector();
-   secure_vector<word>& sub_ws = ws_bn[1].get_word_vector();
+   secure_vector<word>& ws = scope.get().get_word_vector();
+   secure_vector<word>& sub_ws = scope.get().get_word_vector();
 
-   BigInt& T0 = ws_bn[2];
-   BigInt& T1 = ws_bn[3];
-   BigInt& T2 = ws_bn[4];
-   BigInt& T3 = ws_bn[5];
-   BigInt& T4 = ws_bn[6];
+   BigInt& T0 = scope.get();
+   BigInt& T1 = scope.get();
+   BigInt& T2 = scope.get();
+   BigInt& T3 = scope.get();
+   BigInt& T4 = scope.get();
 
    /*
    https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-1998-cmo-2
@@ -136,7 +128,7 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
       {
       if(T0.is_zero())
          {
-         mult2(ws_bn);
+         mult2(pool);
          return;
          }
 
@@ -173,7 +165,7 @@ void PointGFp::add_affine(const word x_words[], size_t x_size,
 void PointGFp::add(const word x_words[], size_t x_size,
                    const word y_words[], size_t y_size,
                    const word z_words[], size_t z_size,
-                   std::vector<BigInt>& ws_bn)
+                   BigInt::Pool& pool)
    {
    if(all_zeros(x_words, x_size) & all_zeros(z_words, z_size))
       return;
@@ -186,17 +178,17 @@ void PointGFp::add(const word x_words[], size_t x_size,
       return;
       }
 
-   resize_ws(ws_bn, m_curve.get_ws_size());
+   BigInt::Pool::Scope scope(pool);
 
-   secure_vector<word>& ws = ws_bn[0].get_word_vector();
-   secure_vector<word>& sub_ws = ws_bn[1].get_word_vector();
+   secure_vector<word>& ws = scope.get().get_word_vector();
+   secure_vector<word>& sub_ws = scope.get().get_word_vector();
 
-   BigInt& T0 = ws_bn[2];
-   BigInt& T1 = ws_bn[3];
-   BigInt& T2 = ws_bn[4];
-   BigInt& T3 = ws_bn[5];
-   BigInt& T4 = ws_bn[6];
-   BigInt& T5 = ws_bn[7];
+   BigInt& T0 = scope.get();
+   BigInt& T1 = scope.get();
+   BigInt& T2 = scope.get();
+   BigInt& T3 = scope.get();
+   BigInt& T4 = scope.get();
+   BigInt& T5 = scope.get();
 
    /*
    https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-1998-cmo-2
@@ -223,7 +215,7 @@ void PointGFp::add(const word x_words[], size_t x_size,
       {
       if(T0.is_zero())
          {
-         mult2(ws_bn);
+         mult2(pool);
          return;
          }
 
@@ -256,7 +248,7 @@ void PointGFp::add(const word x_words[], size_t x_size,
    m_curve.mul(m_coord_z, T3, T4, ws);
    }
 
-void PointGFp::mult2i(size_t iterations, std::vector<BigInt>& ws_bn)
+void PointGFp::mult2i(size_t iterations, BigInt::Pool& pool)
    {
    if(iterations == 0)
       return;
@@ -272,11 +264,11 @@ void PointGFp::mult2i(size_t iterations, std::vector<BigInt>& ws_bn)
    a*Z^4 using values cached from previous iteration
    */
    for(size_t i = 0; i != iterations; ++i)
-      mult2(ws_bn);
+      mult2(pool);
    }
 
 // *this *= 2
-void PointGFp::mult2(std::vector<BigInt>& ws_bn)
+void PointGFp::mult2(BigInt::Pool& pool)
    {
    if(is_zero())
       return;
@@ -287,16 +279,16 @@ void PointGFp::mult2(std::vector<BigInt>& ws_bn)
       return;
       }
 
-   resize_ws(ws_bn, m_curve.get_ws_size());
+   BigInt::Pool::Scope scope(pool);
 
-   secure_vector<word>& ws = ws_bn[0].get_word_vector();
-   secure_vector<word>& sub_ws = ws_bn[1].get_word_vector();
+   secure_vector<word>& ws = scope.get().get_word_vector();
+   secure_vector<word>& sub_ws = scope.get().get_word_vector();
 
-   BigInt& T0 = ws_bn[2];
-   BigInt& T1 = ws_bn[3];
-   BigInt& T2 = ws_bn[4];
-   BigInt& T3 = ws_bn[5];
-   BigInt& T4 = ws_bn[6];
+   BigInt& T0 = scope.get();
+   BigInt& T1 = scope.get();
+   BigInt& T2 = scope.get();
+   BigInt& T3 = scope.get();
+   BigInt& T4 = scope.get();
 
    /*
    https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-1986-cc
@@ -368,8 +360,8 @@ void PointGFp::mult2(std::vector<BigInt>& ws_bn)
 // arithmetic operators
 PointGFp& PointGFp::operator+=(const PointGFp& rhs)
    {
-   std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
-   add(rhs, ws);
+   BigInt::Pool pool;
+   add(rhs, pool);
    return *this;
    }
 
@@ -397,15 +389,15 @@ PointGFp operator*(const BigInt& scalar, const PointGFp& point)
 
    const size_t scalar_bits = scalar.bits();
 
-   std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
+   BigInt::Pool pool;
 
    PointGFp R[2] = { point.zero(), point };
 
    for(size_t i = scalar_bits; i > 0; i--)
       {
       const size_t b = scalar.get_bit(i - 1);
-      R[b ^ 1].add(R[b], ws);
-      R[b].mult2(ws);
+      R[b ^ 1].add(R[b], pool);
+      R[b].mult2(pool);
       }
 
    if(scalar.is_negative())
@@ -418,7 +410,7 @@ PointGFp operator*(const BigInt& scalar, const PointGFp& point)
 
 //static
 void PointGFp::force_all_affine(std::vector<PointGFp>& points,
-                                secure_vector<word>& ws)
+                                BigInt::Pool& pool)
    {
    if(points.size() <= 1)
       {
@@ -436,11 +428,12 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
    TODO is it really necessary to save all k points in c?
    */
 
+   BigInt::Pool::Scope scope(pool);
+
    const CurveGFp& curve = points[0].m_curve;
    const BigInt& rep_1 = curve.get_1_rep();
 
-   if(ws.size() < curve.get_ws_size())
-      ws.resize(curve.get_ws_size());
+   secure_vector<word>& ws = scope.get().get_word_vector();
 
    std::vector<BigInt> c(points.size());
    c[0] = points[0].m_coord_z;
@@ -452,7 +445,9 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
 
    BigInt s_inv = curve.invert_element(c[c.size()-1], ws);
 
-   BigInt z_inv, z2_inv, z3_inv;
+   BigInt z_inv = scope.get();
+   BigInt z2_inv = scope.get();
+   BigInt z3_inv = scope.get();
 
    for(size_t i = points.size() - 1; i != 0; i--)
       {

@@ -13,6 +13,7 @@
 #include <botan/secmem.h>
 #include <botan/exceptn.h>
 #include <botan/loadstor.h>
+#include <botan/pool.h>
 #include <iosfwd>
 
 namespace Botan {
@@ -25,6 +26,8 @@ class RandomNumberGenerator;
 class BOTAN_PUBLIC_API(2,0) BigInt final
    {
    public:
+     typedef ObjPool<BigInt> Pool;
+
      /**
      * Base enumerator for encoding and decoding
      */
@@ -362,7 +365,12 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
      * Zeroize the BigInt. The size of the underlying register is not
      * modified.
      */
-     void clear() { m_data.set_to_zero(); m_signedness = Positive; }
+     BigInt& clear()
+        {
+        m_data.set_to_zero();
+        m_signedness = Positive;
+        return (*this);
+        }
 
      /**
      * Compare this to another BigInt

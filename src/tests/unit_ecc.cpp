@@ -122,7 +122,8 @@ std::vector<Test::Result> ECC_Randomized_Tests::run()
       const Botan::PointGFp pt = create_random_point(Test::rng(), group);
       const Botan::BigInt& group_order = group.get_order();
 
-      std::vector<Botan::BigInt> blind_ws;
+      Botan::BigInt::Pool pool;
+
 
       try
          {
@@ -137,9 +138,9 @@ std::vector<Test::Result> ECC_Randomized_Tests::run()
             const Botan::PointGFp Q = pt * b;
             const Botan::PointGFp R = pt * c;
 
-            Botan::PointGFp P1 = group.blinded_var_point_multiply(pt, a, Test::rng(), blind_ws);
-            Botan::PointGFp Q1 = group.blinded_var_point_multiply(pt, b, Test::rng(), blind_ws);
-            Botan::PointGFp R1 = group.blinded_var_point_multiply(pt, c, Test::rng(), blind_ws);
+            Botan::PointGFp P1 = group.blinded_var_point_multiply(pt, a, Test::rng(), pool);
+            Botan::PointGFp Q1 = group.blinded_var_point_multiply(pt, b, Test::rng(), pool);
+            Botan::PointGFp R1 = group.blinded_var_point_multiply(pt, c, Test::rng(), pool);
 
             Botan::PointGFp A1 = P + Q;
             Botan::PointGFp A2 = Q + P;

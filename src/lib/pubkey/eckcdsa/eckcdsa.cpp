@@ -71,7 +71,7 @@ class ECKCDSA_Signature_Operation final : public PK_Ops::Signature_with_EMSA
       const EC_Group m_group;
       const BigInt& m_x;
       secure_vector<uint8_t> m_prefix;
-      std::vector<BigInt> m_ws;
+      BigInt::Pool m_pool;
    };
 
 secure_vector<uint8_t>
@@ -79,7 +79,7 @@ ECKCDSA_Signature_Operation::raw_sign(const uint8_t msg[], size_t,
                                      RandomNumberGenerator& rng)
    {
    const BigInt k = m_group.random_scalar(rng);
-   const BigInt k_times_P_x = m_group.blinded_base_point_multiply_x(k, rng, m_ws);
+   const BigInt k_times_P_x = m_group.blinded_base_point_multiply_x(k, rng, m_pool);
 
    secure_vector<uint8_t> to_be_hashed(k_times_P_x.bytes());
    k_times_P_x.binary_encode(to_be_hashed.data());

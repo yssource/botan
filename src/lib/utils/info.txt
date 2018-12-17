@@ -18,6 +18,7 @@ mem_ops.h
 mul128.h
 mutex.h
 parsing.h
+pool.h
 rotate.h
 types.h
 version.h

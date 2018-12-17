@@ -39,10 +39,10 @@ class ECDH_KA_Operation final : public PK_Ops::Key_Agreement_with_KDF
       secure_vector<uint8_t> raw_agree(const uint8_t w[], size_t w_len) override
          {
          PointGFp input_point = m_group.get_cofactor() * m_group.OS2ECP(w, w_len);
-         input_point.randomize_repr(m_rng);
+         input_point.randomize_repr(m_rng, m_pool);
 
          const PointGFp S = m_group.blinded_var_point_multiply(
-            input_point, m_l_times_priv, m_rng, m_ws);
+            input_point, m_l_times_priv, m_rng, m_pool);
 
          if(S.on_the_curve() == false)
             throw Internal_Error("ECDH agreed value was not on the curve");
@@ -52,7 +52,7 @@ class ECDH_KA_Operation final : public PK_Ops::Key_Agreement_with_KDF
       const EC_Group m_group;
       BigInt m_l_times_priv;
       RandomNumberGenerator& m_rng;
-      std::vector<BigInt> m_ws;
+      Botan::BigInt::Pool m_pool;
    };
 
 }
