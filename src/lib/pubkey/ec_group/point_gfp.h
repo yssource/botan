@@ -172,8 +172,16 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
       /**
       * Force all points on the list to affine coordinates
       */
-      static void force_all_affine(std::vector<PointGFp>& points,
-                                   secure_vector<word>& ws);
+      static void force_all_affine(std::vector<PointGFp>& points, BN_Pool& pool);
+
+      static void BOTAN_DEPRECATED("Use version taking a BN_Pool")
+         force_all_affine(std::vector<PointGFp>& points,
+                          secure_vector<word>& ws)
+         {
+         BOTAN_UNUSED(ws);
+         BN_Pool pool;
+         force_all_affine(points, pool);
+         }
 
       bool is_affine() const;
 

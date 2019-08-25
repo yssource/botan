@@ -417,13 +417,12 @@ PointGFp operator*(const BigInt& scalar, const PointGFp& point)
    }
 
 //static
-void PointGFp::force_all_affine(std::vector<PointGFp>& points,
-                                secure_vector<word>& ws)
+void PointGFp::force_all_affine(std::vector<PointGFp>& points, BN_Pool& pool)
    {
    if(points.size() <= 1)
       {
       for(size_t i = 0; i != points.size(); ++i)
-         points[i].force_affine();
+         points[i].force_affine(); // fixme take a pool
       return;
       }
 
@@ -439,8 +438,8 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
    const CurveGFp& curve = points[0].m_curve;
    const BigInt& rep_1 = curve.get_1_rep();
 
-   if(ws.size() < curve.get_ws_size())
-      ws.resize(curve.get_ws_size());
+   auto scope = pool.scope();
+   secure_vector<word>& ws = scope.get_vec(curve.get_ws_size());
 
    std::vector<BigInt> c(points.size());
    c[0] = points[0].m_coord_z;
@@ -450,7 +449,7 @@ void PointGFp::force_all_affine(std::vector<PointGFp>& points,
       curve.mul(c[i], c[i-1], points[i].m_coord_z, ws);
       }
 
-   BigInt s_inv = curve.invert_element(c[c.size()-1], ws);
+   BigInt s_inv = curve.invert_element(c[c.size()-1], pool);
 
    BigInt z_inv, z2_inv, z3_inv;
 
@@ -481,9 +480,12 @@ void PointGFp::force_affine()
    if(is_zero())
       throw Invalid_State("Cannot convert zero ECC point to affine");
 
-   secure_vector<word> ws;
+   BN_Pool pool; // take as arg!
 
-   const BigInt z_inv = m_curve.invert_element(m_coord_z, ws);
+   auto scope = pool.scope();
+   secure_vector<word>& ws = scope.get_vec();
+
+   const BigInt z_inv = m_curve.invert_element(m_coord_z, pool);
    const BigInt z2_inv = m_curve.sqr_to_tmp(z_inv, ws);
    const BigInt z3_inv = m_curve.mul_to_tmp(z_inv, z2_inv, ws);
    m_coord_x = m_curve.mul_to_tmp(m_coord_x, z2_inv, ws);
@@ -501,13 +503,15 @@ BigInt PointGFp::get_affine_x() const
    if(is_zero())
       throw Illegal_Transformation("Cannot convert zero point to affine");
 
-   secure_vector<word> monty_ws;
+   BN_Pool pool;
+   auto scope = pool.scope();
+   secure_vector<word>& monty_ws = scope.get_vec();
 
    if(is_affine())
       return m_curve.from_rep_to_tmp(m_coord_x, monty_ws);
 
    BigInt z2 = m_curve.sqr_to_tmp(m_coord_z, monty_ws);
-   z2 = m_curve.invert_element(z2, monty_ws);
+   z2 = m_curve.invert_element(z2, pool);
 
    BigInt r;
    m_curve.mul(r, m_coord_x, z2, monty_ws);
@@ -520,14 +524,16 @@ BigInt PointGFp::get_affine_y() const
    if(is_zero())
       throw Illegal_Transformation("Cannot convert zero point to affine");
 
-   secure_vector<word> monty_ws;
+   BN_Pool pool;
+   auto scope = pool.scope();
+   secure_vector<word>& monty_ws = scope.get_vec();
 
    if(is_affine())
       return m_curve.from_rep_to_tmp(m_coord_y, monty_ws);
 
    const BigInt z2 = m_curve.sqr_to_tmp(m_coord_z, monty_ws);
    const BigInt z3 = m_curve.mul_to_tmp(m_coord_z, z2, monty_ws);
-   const BigInt z3_inv = m_curve.invert_element(z3, monty_ws);
+   const BigInt z3_inv = m_curve.invert_element(z3, pool);
 
    BigInt r;
    m_curve.mul(r, m_coord_y, z3_inv, monty_ws);

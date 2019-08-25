@@ -1150,7 +1150,7 @@ class BOTAN_UNSTABLE_API BN_Pool final
       * @param initial_size the initial number of elements in the cache
       * @param max_cached the maximum unused BigInts that will be retained
       */
-      BN_Pool(size_t initial_size = 0, size_t max_cached = 3) :
+      BN_Pool(size_t initial_size = 0, size_t max_cached = 0) :
          m_max_cached(max_cached),
          m_pool(initial_size),
          m_in_use(0)
@@ -1177,6 +1177,13 @@ class BOTAN_UNSTABLE_API BN_Pool final
             secure_vector<word>& get_vec()
                {
                return this->get().get_word_vector();
+               }
+
+            BigInt& get(RandomNumberGenerator& rng, size_t bits)
+               {
+               BigInt& b = this->get();
+               b.randomize(rng, bits);
+               return b;
                }
 
             BigInt& get(word initial_value)
