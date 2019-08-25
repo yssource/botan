@@ -17,12 +17,12 @@ loadstor.h
 mem_ops.h
 mul128.h
 mutex.h
+obj_pool.h
 parsing.h
-pool.h
 rotate.h
+stl_compatibility.h
 types.h
 version.h
-stl_compatibility.h
 </header:public>
 
 <header:internal>

@@ -13,7 +13,7 @@
 #include <botan/secmem.h>
 #include <botan/exceptn.h>
 #include <botan/loadstor.h>
-#include <botan/pool.h>
+#include <botan/obj_pool.h>
 #include <iosfwd>
 
 namespace Botan {

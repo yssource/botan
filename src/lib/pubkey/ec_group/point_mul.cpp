@@ -72,9 +72,9 @@ PointGFp_Base_Point_Precompute::PointGFp_Base_Point_Precompute(const PointGFp& b
    for(size_t i = 0; i != T_bits; i++)
       {
       g2 = g;
-      g2.mult2(ws);
+      g2.mult2(pool);
       g4 = g2;
-      g4.mult2(ws);
+      g4.mult2(pool);
 
       T[7*i+0] = g;
       T[7*i+1] = std::move(g2);
