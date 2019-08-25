@@ -1138,13 +1138,13 @@ class Speed final : public Command
             Botan::PointGFp non_affine_pt = group.get_base_point() * 1776; // create a non-affine point
             Botan::PointGFp pt = group.get_base_point();
 
-            std::vector<Botan::BigInt> ws(Botan::PointGFp::WORKSPACE_SIZE);
+            Botan::BN_Pool pool;
 
             while(add_timer->under(runtime) && addf_timer->under(runtime) && dbl_timer->under(runtime))
                {
-               dbl_timer->run([&]() { pt.mult2(ws); });
-               add_timer->run([&]() { pt.add(non_affine_pt, ws); });
-               addf_timer->run([&]() { pt.add_affine(base_point, ws); });
+               dbl_timer->run([&]() { pt.mult2(pool); });
+               add_timer->run([&]() { pt.add(non_affine_pt, pool); });
+               addf_timer->run([&]() { pt.add_affine(base_point, pool); });
                }
 
             record_result(dbl_timer);
@@ -1181,7 +1181,7 @@ class Speed final : public Command
 
             const Botan::PointGFp& base_point = group.get_base_point();
 
-            std::vector<Botan::BigInt> ws;
+            Botan::BN_Pool pool;
 
             while(mult_timer->under(runtime) &&
                   blinded_mult_timer->under(runtime) &&
@@ -1192,10 +1192,10 @@ class Speed final : public Command
                const Botan::PointGFp r1 = mult_timer->run([&]() { return base_point * scalar; });
 
                const Botan::PointGFp r2 = blinded_mult_timer->run(
-                  [&]() { return group.blinded_base_point_multiply(scalar, rng(), ws); });
+                  [&]() { return group.blinded_base_point_multiply(scalar, rng(), pool); });
 
                const Botan::PointGFp r3 = blinded_var_mult_timer->run(
-                  [&]() { return group.blinded_var_point_multiply(base_point, scalar, rng(), ws); });
+                  [&]() { return group.blinded_var_point_multiply(base_point, scalar, rng(), pool); });
 
                BOTAN_ASSERT_EQUAL(r1, r2, "Same point computed by Montgomery and comb");
                BOTAN_ASSERT_EQUAL(r1, r3, "Same point computed by Montgomery and window");

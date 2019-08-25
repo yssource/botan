@@ -72,7 +72,7 @@ class ECIES_ECDH_KA_Operation final : public PK_Ops::Key_Agreement_with_KDF
          input_point.randomize_repr(m_rng);
 
          const PointGFp S = group.blinded_var_point_multiply(
-            input_point, m_key.private_value(), m_rng, m_ws);
+            input_point, m_key.private_value(), m_rng, m_pool);
 
          if(S.on_the_curve() == false)
             throw Internal_Error("ECDH agreed value was not on the curve");
@@ -82,7 +82,7 @@ class ECIES_ECDH_KA_Operation final : public PK_Ops::Key_Agreement_with_KDF
    private:
       ECIES_PrivateKey m_key;
       RandomNumberGenerator& m_rng;
-      std::vector<BigInt> m_ws;
+      BN_Pool m_pool;
    };
 
 std::unique_ptr<PK_Ops::Key_Agreement>

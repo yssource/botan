@@ -28,12 +28,12 @@ PointGFp multi_exponentiate(const PointGFp& x, const BigInt& z1,
 Blinded_Point_Multiply::Blinded_Point_Multiply(const PointGFp& base,
                                                const BigInt& order,
                                                size_t h) :
-   m_ws(PointGFp::WORKSPACE_SIZE),
+   m_pool(),
    m_order(order)
    {
    BOTAN_UNUSED(h);
    Null_RNG null_rng;
-   m_point_mul.reset(new PointGFp_Var_Point_Precompute(base, null_rng, m_ws));
+   m_point_mul.reset(new PointGFp_Var_Point_Precompute(base, null_rng, m_pool));
    }
 
 Blinded_Point_Multiply::~Blinded_Point_Multiply()
@@ -44,7 +44,7 @@ Blinded_Point_Multiply::~Blinded_Point_Multiply()
 PointGFp Blinded_Point_Multiply::blinded_multiply(const BigInt& scalar,
                                                   RandomNumberGenerator& rng)
    {
-   return m_point_mul->mul(scalar, rng, m_order, m_ws);
+   return m_point_mul->mul(scalar, rng, m_order, m_pool);
    }
 
 PointGFp_Base_Point_Precompute::PointGFp_Base_Point_Precompute(const PointGFp& base,
@@ -53,7 +53,8 @@ PointGFp_Base_Point_Precompute::PointGFp_Base_Point_Precompute(const PointGFp& b
    m_mod_order(mod_order),
    m_p_words(base.get_curve().get_p().sig_words())
    {
-   std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
+   BN_Pool pool;
+   auto scope = pool.scope();
 
    const size_t p_bits = base.get_curve().get_p().bits();
 
@@ -72,23 +73,23 @@ PointGFp_Base_Point_Precompute::PointGFp_Base_Point_Precompute(const PointGFp& b
    for(size_t i = 0; i != T_bits; i++)
       {
       g2 = g;
-      g2.mult2(ws);
+      g2.mult2(pool);
       g4 = g2;
-      g4.mult2(ws);
+      g4.mult2(pool);
 
       T[7*i+0] = g;
       T[7*i+1] = std::move(g2);
-      T[7*i+2] = T[7*i+1].plus(T[7*i+0], ws); // g2+g
+      T[7*i+2] = T[7*i+1].plus(T[7*i+0], pool); // g2+g
       T[7*i+3] = g4;
-      T[7*i+4] = T[7*i+3].plus(T[7*i+0], ws); // g4+g
-      T[7*i+5] = T[7*i+3].plus(T[7*i+1], ws); // g4+g2
-      T[7*i+6] = T[7*i+3].plus(T[7*i+2], ws); // g4+g2+g
+      T[7*i+4] = T[7*i+3].plus(T[7*i+0], pool); // g4+g
+      T[7*i+5] = T[7*i+3].plus(T[7*i+1], pool); // g4+g2
+      T[7*i+6] = T[7*i+3].plus(T[7*i+2], pool); // g4+g2+g
 
       g.swap(g4);
-      g.mult2(ws);
+      g.mult2(pool);
       }
 
-   PointGFp::force_all_affine(T, ws[0].get_word_vector());
+   PointGFp::force_all_affine(T, pool);
 
    m_W.resize(T.size() * 2 * m_p_words);
 
@@ -105,7 +106,7 @@ PointGFp_Base_Point_Precompute::PointGFp_Base_Point_Precompute(const PointGFp& b
 PointGFp PointGFp_Base_Point_Precompute::mul(const BigInt& k,
                                              RandomNumberGenerator& rng,
                                              const BigInt& group_order,
-                                             std::vector<BigInt>& ws) const
+                                             BN_Pool& pool) const
    {
    if(k.is_negative())
       throw Invalid_Argument("PointGFp_Base_Point_Precompute scalar must be positive");
@@ -142,9 +143,6 @@ PointGFp PointGFp_Base_Point_Precompute::mul(const BigInt& k,
 
    PointGFp R = m_base_point.zero();
 
-   if(ws.size() < PointGFp::WORKSPACE_SIZE)
-      ws.resize(PointGFp::WORKSPACE_SIZE);
-
    // the precomputed multiples are not secret so use std::vector
    std::vector<word> Wt(elem_size);
 
@@ -176,7 +174,7 @@ PointGFp PointGFp_Base_Point_Precompute::mul(const BigInt& k,
          Wt[j] = w1 | w2 | w3 | w4 | w5 | w6 | w7;
          }
 
-      R.add_affine(&Wt[0], m_p_words, &Wt[m_p_words], m_p_words, ws);
+      R.add_affine(&Wt[0], m_p_words, &Wt[m_p_words], m_p_words, pool);
 
       if(i == 0 && rng.is_seeded())
          {
@@ -186,7 +184,8 @@ PointGFp PointGFp_Base_Point_Precompute::mul(const BigInt& k,
          * now a point other than the point at infinity.
          */
          BOTAN_DEBUG_ASSERT(w != 0);
-         R.randomize_repr(rng, ws[0].get_word_vector());
+         auto scope = pool.scope();
+         R.randomize_repr(rng, scope.get_vec());
          }
       }
 
@@ -197,34 +196,32 @@ PointGFp PointGFp_Base_Point_Precompute::mul(const BigInt& k,
 
 PointGFp_Var_Point_Precompute::PointGFp_Var_Point_Precompute(const PointGFp& point,
                                                              RandomNumberGenerator& rng,
-                                                             std::vector<BigInt>& ws) :
+                                                             BN_Pool& pool) :
    m_curve(point.get_curve()),
    m_p_words(m_curve.get_p().sig_words()),
    m_window_bits(4)
    {
-   if(ws.size() < PointGFp::WORKSPACE_SIZE)
-      ws.resize(PointGFp::WORKSPACE_SIZE);
-
    std::vector<PointGFp> U(static_cast<size_t>(1) << m_window_bits);
    U[0] = point.zero();
    U[1] = point;
 
    for(size_t i = 2; i < U.size(); i += 2)
       {
-      U[i] = U[i/2].double_of(ws);
-      U[i+1] = U[i].plus(point, ws);
+      U[i] = U[i/2].double_of(pool);
+      U[i+1] = U[i].plus(point, pool);
       }
 
    // Hack to handle Blinded_Point_Multiply
    if(rng.is_seeded())
       {
-      BigInt& mask = ws[0];
-      BigInt& mask2 = ws[1];
-      BigInt& mask3 = ws[2];
-      BigInt& new_x = ws[3];
-      BigInt& new_y = ws[4];
-      BigInt& new_z = ws[5];
-      secure_vector<word>& tmp = ws[6].get_word_vector();
+      auto scope = pool.scope();
+      BigInt& mask = scope.get();
+      BigInt& mask2 = scope.get();
+      BigInt& mask3 = scope.get();
+      BigInt& new_x = scope.get();
+      BigInt& new_y = scope.get();
+      BigInt& new_z = scope.get();
+      secure_vector<word>& tmp = scope.get_vec();
 
       const CurveGFp& curve = U[0].get_curve();
 
@@ -263,12 +260,10 @@ PointGFp_Var_Point_Precompute::PointGFp_Var_Point_Precompute(const PointGFp& poi
 PointGFp PointGFp_Var_Point_Precompute::mul(const BigInt& k,
                                             RandomNumberGenerator& rng,
                                             const BigInt& group_order,
-                                            std::vector<BigInt>& ws) const
+                                            BN_Pool& pool) const
    {
    if(k.is_negative())
       throw Invalid_Argument("PointGFp_Var_Point_Precompute scalar must be positive");
-   if(ws.size() < PointGFp::WORKSPACE_SIZE)
-      ws.resize(PointGFp::WORKSPACE_SIZE);
 
    // Choose a small mask m and use k' = k + m*order (Coron's 1st countermeasure)
    const BigInt mask(rng, PointGFp_SCALAR_BLINDING_BITS, false);
@@ -298,19 +293,20 @@ PointGFp PointGFp_Var_Point_Precompute::mul(const BigInt& k,
             }
          }
 
-      R.add(&e[0], m_p_words, &e[m_p_words], m_p_words, &e[2*m_p_words], m_p_words, ws);
+      R.add(&e[0], m_p_words, &e[m_p_words], m_p_words, &e[2*m_p_words], m_p_words, pool);
 
       /*
       Randomize after adding the first nibble as before the addition R
       is zero, and we cannot effectively randomize the point
       representation of the zero point.
       */
-      R.randomize_repr(rng, ws[0].get_word_vector());
+      auto scope = pool.scope();
+      R.randomize_repr(rng, scope.get_vec());
       }
 
    while(windows)
       {
-      R.mult2i(m_window_bits, ws);
+      R.mult2i(m_window_bits, pool);
 
       const uint32_t w = scalar.get_substring((windows-1)*m_window_bits, m_window_bits);
 
@@ -325,7 +321,7 @@ PointGFp PointGFp_Var_Point_Precompute::mul(const BigInt& k,
             }
          }
 
-      R.add(&e[0], m_p_words, &e[m_p_words], m_p_words, &e[2*m_p_words], m_p_words, ws);
+      R.add(&e[0], m_p_words, &e[m_p_words], m_p_words, &e[2*m_p_words], m_p_words, pool);
 
       windows--;
       }
@@ -339,17 +335,17 @@ PointGFp PointGFp_Var_Point_Precompute::mul(const BigInt& k,
 PointGFp_Multi_Point_Precompute::PointGFp_Multi_Point_Precompute(const PointGFp& x,
                                                                  const PointGFp& y)
    {
-   std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
+   BN_Pool pool;
 
    PointGFp x2 = x;
-   x2.mult2(ws);
+   x2.mult2(pool);
 
-   const PointGFp x3(x2.plus(x, ws));
+   const PointGFp x3(x2.plus(x, pool));
 
    PointGFp y2 = y;
-   y2.mult2(ws);
+   y2.mult2(pool);
 
-   const PointGFp y3(y2.plus(y, ws));
+   const PointGFp y3(y2.plus(y, pool));
 
    m_M.reserve(15);
 
@@ -358,27 +354,27 @@ PointGFp_Multi_Point_Precompute::PointGFp_Multi_Point_Precompute(const PointGFp&
    m_M.push_back(x3);
 
    m_M.push_back(y);
-   m_M.push_back(y.plus(x, ws));
-   m_M.push_back(y.plus(x2, ws));
-   m_M.push_back(y.plus(x3, ws));
+   m_M.push_back(y.plus(x, pool));
+   m_M.push_back(y.plus(x2, pool));
+   m_M.push_back(y.plus(x3, pool));
 
    m_M.push_back(y2);
-   m_M.push_back(y2.plus(x, ws));
-   m_M.push_back(y2.plus(x2, ws));
-   m_M.push_back(y2.plus(x3, ws));
+   m_M.push_back(y2.plus(x, pool));
+   m_M.push_back(y2.plus(x2, pool));
+   m_M.push_back(y2.plus(x3, pool));
 
    m_M.push_back(y3);
-   m_M.push_back(y3.plus(x, ws));
-   m_M.push_back(y3.plus(x2, ws));
-   m_M.push_back(y3.plus(x3, ws));
+   m_M.push_back(y3.plus(x, pool));
+   m_M.push_back(y3.plus(x2, pool));
+   m_M.push_back(y3.plus(x3, pool));
 
-   PointGFp::force_all_affine(m_M, ws[0].get_word_vector());
+   PointGFp::force_all_affine(m_M, pool);
    }
 
 PointGFp PointGFp_Multi_Point_Precompute::multi_exp(const BigInt& z1,
                                                     const BigInt& z2) const
    {
-   std::vector<BigInt> ws(PointGFp::WORKSPACE_SIZE);
+   BN_Pool pool;
 
    const size_t z_bits = round_up(std::max(z1.bits(), z2.bits()), 2);
 
@@ -388,7 +384,7 @@ PointGFp PointGFp_Multi_Point_Precompute::multi_exp(const BigInt& z1,
       {
       if(i > 0)
          {
-         H.mult2i(2, ws);
+         H.mult2i(2, pool);
          }
 
       const uint32_t z1_b = z1.get_substring(z_bits - i - 2, 2);
@@ -399,7 +395,7 @@ PointGFp PointGFp_Multi_Point_Precompute::multi_exp(const BigInt& z1,
       // This function is not intended to be const time
       if(z12)
          {
-         H.add_affine(m_M[z12-1], ws);
+         H.add_affine(m_M[z12-1], pool);
          }
       }
 

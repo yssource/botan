@@ -131,7 +131,7 @@ class SM2_Signature_Operation final : public PK_Ops::Signature
       std::vector<uint8_t> m_za;
       secure_vector<uint8_t> m_digest;
       std::unique_ptr<HashFunction> m_hash;
-      std::vector<BigInt> m_ws;
+      BN_Pool m_pool;
    };
 
 secure_vector<uint8_t>
@@ -153,7 +153,7 @@ SM2_Signature_Operation::sign(RandomNumberGenerator& rng)
    const BigInt k = m_group.random_scalar(rng);
 
    const BigInt r = m_group.mod_order(
-      m_group.blinded_base_point_multiply_x(k, rng, m_ws) + e);
+      m_group.blinded_base_point_multiply_x(k, rng, m_pool) + e);
    const BigInt s = m_group.multiply_mod_order(m_da_inv, m_group.mod_order(k - r*m_x));
 
    return BigInt::encode_fixed_length_int_pair(r, s, m_group.get_order().bytes());

@@ -22,7 +22,7 @@ class PointGFp_Base_Point_Precompute final
       PointGFp mul(const BigInt& k,
                    RandomNumberGenerator& rng,
                    const BigInt& group_order,
-                   std::vector<BigInt>& ws) const;
+                   BN_Pool& pool) const;
    private:
       const PointGFp& m_base_point;
       const Modular_Reducer& m_mod_order;
@@ -43,12 +43,12 @@ class PointGFp_Var_Point_Precompute final
    public:
       PointGFp_Var_Point_Precompute(const PointGFp& point,
                                     RandomNumberGenerator& rng,
-                                    std::vector<BigInt>& ws);
+                                    BN_Pool& pool);
 
       PointGFp mul(const BigInt& k,
                    RandomNumberGenerator& rng,
                    const BigInt& group_order,
-                   std::vector<BigInt>& ws) const;
+                   BN_Pool& pool) const;
    private:
       const CurveGFp m_curve;
       const size_t m_p_words;

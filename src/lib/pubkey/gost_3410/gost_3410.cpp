@@ -144,7 +144,7 @@ class GOST_3410_Signature_Operation final : public PK_Ops::Signature_with_EMSA
    private:
       const EC_Group m_group;
       const BigInt& m_x;
-      std::vector<BigInt> m_ws;
+      BN_Pool m_pool;
    };
 
 secure_vector<uint8_t>
@@ -160,7 +160,7 @@ GOST_3410_Signature_Operation::raw_sign(const uint8_t msg[], size_t msg_len,
       e = 1;
 
    const BigInt r = m_group.mod_order(
-      m_group.blinded_base_point_multiply_x(k, rng, m_ws));
+      m_group.blinded_base_point_multiply_x(k, rng, m_pool));
 
    const BigInt s = m_group.mod_order(
       m_group.multiply_mod_order(r, m_x) +

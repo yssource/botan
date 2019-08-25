@@ -1194,6 +1194,13 @@ class BOTAN_UNSTABLE_API BN_Pool final
                return b;
                }
 
+            BigInt& get_sized(size_t min_words)
+               {
+               BigInt& b = this->get();
+               b.get_word_vector().resize(min_words);
+               return b;
+               }
+
             secure_vector<word>& get_vec(size_t init_sz)
                {
                secure_vector<word>& v = this->get_vec();

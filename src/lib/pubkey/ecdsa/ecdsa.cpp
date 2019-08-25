@@ -160,7 +160,7 @@ class ECDSA_Signature_Operation final : public PK_Ops::Signature_with_EMSA
       std::unique_ptr<RFC6979_Nonce_Generator> m_rfc6979;
 #endif
 
-      std::vector<BigInt> m_ws;
+      BN_Pool m_pool;
 
       BigInt m_b, m_b_inv;
    };
@@ -178,7 +178,7 @@ ECDSA_Signature_Operation::raw_sign(const uint8_t msg[], size_t msg_len,
 #endif
 
    const BigInt r = m_group.mod_order(
-      m_group.blinded_base_point_multiply_x(k, rng, m_ws));
+      m_group.blinded_base_point_multiply_x(k, rng, m_pool));
 
    const BigInt k_inv = m_group.inverse_mod_order(k);
 
