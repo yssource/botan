@@ -215,6 +215,9 @@ BigInt generate_rsa_prime(RandomNumberGenerator& keygen_rng,
 
    const size_t mr_trials = miller_rabin_test_iterations(bits, prob, true);
 
+   BN_Pool pool;
+   auto scope = pool.scope();
+
    while(true)
       {
       BigInt p(keygen_rng, bits);

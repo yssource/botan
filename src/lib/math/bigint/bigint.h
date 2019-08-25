@@ -13,6 +13,8 @@
 #include <botan/secmem.h>
 #include <botan/exceptn.h>
 #include <iosfwd>
+#include <vector>
+#include <deque>
 
 namespace Botan {
 
@@ -142,7 +144,9 @@ class BOTAN_PUBLIC_API(2,0) BigInt final
      BigInt& operator=(BigInt&& other)
         {
         if(this != &other)
+           {
            this->swap(other);
+           }
 
         return (*this);
         }
@@ -1134,6 +1138,94 @@ inline bool operator>(const BigInt& a, word b)
 */
 BOTAN_PUBLIC_API(2,0) std::ostream& operator<<(std::ostream&, const BigInt&);
 BOTAN_PUBLIC_API(2,0) std::istream& operator>>(std::istream&, BigInt&);
+
+/**
+* A cache of BigInts
+*/
+class BOTAN_UNSTABLE_API BN_Pool final
+   {
+   public:
+      /**
+      * Create a cache
+      * @param initial_size the initial number of elements in the cache
+      * @param max_cached the maximum unused BigInts that will be retained
+      */
+      BN_Pool(size_t initial_size = 0, size_t max_cached = 3) :
+         m_max_cached(max_cached),
+         m_pool(initial_size),
+         m_in_use(0)
+         {
+         }
+
+      /**
+      * Start a new stack-based scope for allocations Use scope.get()
+      * to allocate values, all references will become invalid when
+      * ~Scope runs.
+      */
+      class Scope
+         {
+         public:
+            Scope(const Scope& other) = delete;
+            Scope& operator=(const Scope& other) = delete;
+
+            Scope(Scope&& other) = default;
+            Scope& operator=(Scope&& other) = default;
+
+            ~Scope() { m_pool.release(m_used); }
+            BigInt& get() { m_used += 1; return m_pool.get(); }
+
+            secure_vector<word>& get_vec()
+               {
+               return this->get().get_word_vector();
+               }
+
+            BigInt& get(word initial_value)
+               {
+               BigInt& b = this->get();
+               b.clear();
+               b.set_word_at(0, initial_value);
+               return b;
+               }
+
+            secure_vector<word>& get_vec(size_t init_sz)
+               {
+               secure_vector<word>& v = this->get_vec();
+               v.clear();
+               v.resize(init_sz);
+               return v;
+               }
+
+         private:
+            friend BN_Pool;
+            Scope(BN_Pool& cache) : m_pool(cache), m_used(0) {}
+
+            BN_Pool& m_pool;
+            size_t m_used;
+         };
+
+      /**
+      * Return a new scope
+      */
+      Scope scope()
+         {
+         return Scope(*this);
+         }
+
+      BN_Pool(const BN_Pool& other) = delete;
+      BN_Pool& operator=(const BN_Pool& other) = delete;
+
+      BN_Pool(BN_Pool&& other) = delete;
+      BN_Pool& operator=(BN_Pool&& other) = delete;
+
+   private:
+      BigInt& get();
+
+      void release(size_t cnt);
+
+      const size_t m_max_cached;
+      std::deque<BigInt> m_pool;
+      size_t m_in_use;
+   };
 
 }
 

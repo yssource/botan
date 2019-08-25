@@ -289,7 +289,15 @@ std::shared_ptr<EC_Group_Data> EC_Group::BER_decode_EC_group(const uint8_t bits[
       }
    else if(obj.type() == SEQUENCE)
       {
-      BigInt p, a, b, order, cofactor;
+      BN_Pool pool;
+
+      auto scope = pool.scope();
+      BigInt& p = scope.get();
+      BigInt& a = scope.get();
+      BigInt& b = scope.get();
+      BigInt& order = scope.get();
+      BigInt& cofactor = scope.get();
+
       std::vector<uint8_t> base_pt;
       std::vector<uint8_t> seed;
 
@@ -312,7 +320,7 @@ std::shared_ptr<EC_Group_Data> EC_Group::BER_decode_EC_group(const uint8_t bits[
          .end_cons()
          .verify_end();
 
-      if(p.bits() < 64 || p.is_negative() || !is_bailie_psw_probable_prime(p))
+      if(p.bits() < 64 || p.is_negative() || !is_bailie_psw_probable_prime(p, pool))
          throw Decoding_Error("Invalid ECC p parameter");
 
       if(a.is_negative() || a >= p)
@@ -321,7 +329,7 @@ std::shared_ptr<EC_Group_Data> EC_Group::BER_decode_EC_group(const uint8_t bits[
       if(b <= 0 || b >= p)
          throw Decoding_Error("Invalid ECC b parameter");
 
-      if(order <= 0 || !is_bailie_psw_probable_prime(order))
+      if(order <= 0 || !is_bailie_psw_probable_prime(order, pool))
          throw Decoding_Error("Invalid ECC order parameter");
 
       if(cofactor <= 0 || cofactor >= 16)

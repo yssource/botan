@@ -14,7 +14,7 @@
 
 namespace Botan {
 
-bool is_lucas_probable_prime(const BigInt& C, const Modular_Reducer& mod_C)
+bool is_lucas_probable_prime(const BigInt& C, const Modular_Reducer& mod_C, BN_Pool& pool)
    {
    if(C <= 1)
       return false;
@@ -25,7 +25,8 @@ bool is_lucas_probable_prime(const BigInt& C, const Modular_Reducer& mod_C)
    else if(C == 3 || C == 5 || C == 7 || C == 11 || C == 13)
       return true;
 
-   BigInt D = 5;
+   auto scope = pool.scope();
+   BigInt& D = scope.get(5);
 
    for(;;)
       {
@@ -52,13 +53,19 @@ bool is_lucas_probable_prime(const BigInt& C, const Modular_Reducer& mod_C)
          return false;
       }
 
-   const BigInt K = C + 1;
+   BigInt& K = scope.get();
+   K = C;
+   K += 1;
+
    const size_t K_bits = K.bits() - 1;
 
-   BigInt U = 1;
-   BigInt V = 1;
+   BigInt& U = scope.get(1);
+   BigInt& V = scope.get(1);
 
-   BigInt Ut, Vt, U2, V2;
+   BigInt& Ut = scope.get();
+   BigInt& Vt = scope.get();
+   BigInt& U2 = scope.get();
+   BigInt& V2 = scope.get();
 
    for(size_t i = 0; i != K_bits; ++i)
       {
@@ -86,32 +93,43 @@ bool is_lucas_probable_prime(const BigInt& C, const Modular_Reducer& mod_C)
       V.ct_cond_assign(k_bit, V2);
       }
 
-   return (U == 0);
+   return (U.is_zero());
    }
 
-bool is_bailie_psw_probable_prime(const BigInt& n, const Modular_Reducer& mod_n)
+bool is_bailie_psw_probable_prime(const BigInt& n,
+                                  const Modular_Reducer& mod_n,
+                                  BN_Pool& pool)
    {
    auto monty_n = std::make_shared<Montgomery_Params>(n, mod_n);
-   return passes_miller_rabin_test(n, mod_n, monty_n, 2) && is_lucas_probable_prime(n, mod_n);
+   return passes_miller_rabin_test(n, mod_n, monty_n, 2, pool) && is_lucas_probable_prime(n, mod_n, pool);
    }
 
-bool is_bailie_psw_probable_prime(const BigInt& n)
+bool is_bailie_psw_probable_prime(const BigInt& n, BN_Pool& pool)
    {
    Modular_Reducer mod_n(n);
-   return is_bailie_psw_probable_prime(n, mod_n);
+   return is_bailie_psw_probable_prime(n, mod_n, pool);
    }
 
 bool passes_miller_rabin_test(const BigInt& n,
                               const Modular_Reducer& mod_n,
                               const std::shared_ptr<Montgomery_Params>& monty_n,
-                              const BigInt& a)
+                              const BigInt& a,
+                              BN_Pool& pool)
    {
    BOTAN_ASSERT_NOMSG(n > 1);
 
-   const BigInt n_minus_1 = n - 1;
-   const size_t s = low_zero_bits(n_minus_1);
-   const BigInt nm1_s = n_minus_1 >> s;
    const size_t n_bits = n.bits();
+
+   auto scope = pool.scope();
+   BigInt& n_minus_1 = scope.get();
+   n_minus_1 = n;
+   n_minus_1 -= 1;
+
+   const size_t s = low_zero_bits(n_minus_1);
+
+   BigInt& nm1_s = scope.get();
+   nm1_s = n_minus_1;
+   nm1_s >>= s;
 
    const size_t powm_window = 4;
 
@@ -122,9 +140,12 @@ bool passes_miller_rabin_test(const BigInt& n,
    if(y == 1 || y == n_minus_1)
       return true;
 
+   secure_vector<word>& ws = scope.get_vec();
+
    for(size_t i = 1; i != s; ++i)
       {
-      y = mod_n.square(y);
+      y.square(ws);
+      mod_n.reduce(y, pool);
 
       if(y == 1) // found a non-trivial square root
          return false;
@@ -143,7 +164,8 @@ bool passes_miller_rabin_test(const BigInt& n,
 bool is_miller_rabin_probable_prime(const BigInt& n,
                                     const Modular_Reducer& mod_n,
                                     RandomNumberGenerator& rng,
-                                    size_t test_iterations)
+                                    size_t test_iterations,
+                                    BN_Pool& pool)
    {
    BOTAN_ASSERT_NOMSG(n > 1);
 
@@ -153,7 +175,7 @@ bool is_miller_rabin_probable_prime(const BigInt& n,
       {
       const BigInt a = BigInt::random_integer(rng, 2, n);
 
-      if(!passes_miller_rabin_test(n, mod_n, monty_n, a))
+      if(!passes_miller_rabin_test(n, mod_n, monty_n, a, pool))
          return false;
       }
 

@@ -1571,19 +1571,20 @@ class Speed final : public Command
             std::unique_ptr<Timer> lucas_timer = make_timer("Lucas-" + std::to_string(bits));
 
             Botan::BigInt n = Botan::random_prime(rng(), bits);
+            Botan::BN_Pool pool;
 
             while(lucas_timer->under(runtime))
                {
                Botan::Modular_Reducer mod_n(n);
 
                mr_timer->run([&]() {
-                  return Botan::is_miller_rabin_probable_prime(n, mod_n, rng(), 2); });
+                  return Botan::is_miller_rabin_probable_prime(n, mod_n, rng(), 2, pool); });
 
                bpsw_timer->run([&]() {
-                  return Botan::is_bailie_psw_probable_prime(n, mod_n); });
+                  return Botan::is_bailie_psw_probable_prime(n, mod_n, pool); });
 
                lucas_timer->run([&]() {
-                  return Botan::is_lucas_probable_prime(n, mod_n); });
+                  return Botan::is_lucas_probable_prime(n, mod_n, pool); });
 
                n += 2;
                }
