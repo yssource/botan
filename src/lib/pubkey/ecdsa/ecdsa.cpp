@@ -170,18 +170,24 @@ secure_vector<uint8_t>
 ECDSA_Signature_Operation::raw_sign(const uint8_t msg[], size_t msg_len,
                                     RandomNumberGenerator& rng)
    {
+   auto scope = m_pool.scope();
+   BigInt& k = scope.get();
+   BigInt& k_inv = scope.get();
+   BigInt& r = scope.get();
+   BigInt& s = scope.get();
+   BigInt& xr_m = scope.get();
+
    BigInt m(msg, msg_len, m_group.get_order_bits());
 
 #if defined(BOTAN_HAS_RFC6979_GENERATOR)
-   const BigInt k = m_rfc6979->nonce_for(m);
+   k = m_rfc6979->nonce_for(m);
 #else
-   const BigInt k = m_group.random_scalar(rng);
+   k = m_group.random_scalar(rng);
 #endif
 
-   const BigInt r = m_group.mod_order(
-      m_group.blinded_base_point_multiply_x(k, rng, m_pool));
+   r = m_group.mod_order(m_group.blinded_base_point_multiply_x(k, rng, m_pool));
 
-   const BigInt k_inv = m_group.inverse_mod_order(k);
+   k_inv = m_group.inverse_mod_order(k);
 
    /*
    * Blind the input message and compute x*r+m as (x*r*b + m*b)/b
@@ -190,9 +196,9 @@ ECDSA_Signature_Operation::raw_sign(const uint8_t msg[], size_t msg_len,
    m_b_inv = m_group.square_mod_order(m_b_inv);
 
    m = m_group.multiply_mod_order(m_b, m_group.mod_order(m));
-   const BigInt xr_m = m_group.mod_order(m_group.multiply_mod_order(m_x, m_b, r) + m);
+   xr_m = m_group.mod_order(m_group.multiply_mod_order(m_x, m_b, r) + m);
 
-   const BigInt s = m_group.multiply_mod_order(k_inv, xr_m, m_b_inv);
+   s = m_group.multiply_mod_order(k_inv, xr_m, m_b_inv);
 
    // With overwhelming probability, a bug rather than actual zero r/s
    if(r.is_zero() || s.is_zero())

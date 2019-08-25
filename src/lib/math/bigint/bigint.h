@@ -1232,7 +1232,16 @@ class BOTAN_UNSTABLE_API BN_Pool final
       BN_Pool& operator=(BN_Pool&& other) = delete;
 
    private:
-      BigInt& get();
+      BigInt& get()
+         {
+         if(m_in_use == m_pool.size())
+            {
+            m_pool.push_back(BigInt());
+            }
+
+         m_in_use += 1;
+         return m_pool.at(m_in_use - 1);
+         }
 
       void release(size_t cnt);
 
