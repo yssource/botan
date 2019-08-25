@@ -44,6 +44,7 @@ PointGFp recover_ecdsa_public_key(const EC_Group& group,
 
    const BigInt& group_order = group.get_order();
    const size_t p_bytes = group.get_p_bytes();
+   BN_Pool pool;
 
    try
       {
@@ -65,7 +66,7 @@ PointGFp recover_ecdsa_public_key(const EC_Group& group,
       // Compute r_inv * (s*R - eG)
       PointGFp_Multi_Point_Precompute RG_mul(R, group.get_base_point());
       const BigInt ne = group.mod_order(group_order - e);
-      return r_inv * RG_mul.multi_exp(s, ne);
+      return r_inv * RG_mul.multi_exp(s, ne, pool);
       }
    catch(...)
       {
@@ -223,6 +224,7 @@ class ECDSA_Verification_Operation final : public PK_Ops::Verification_with_EMSA
    private:
       const EC_Group m_group;
       const PointGFp_Multi_Point_Precompute m_gy_mul;
+      BN_Pool m_pool;
    };
 
 bool ECDSA_Verification_Operation::verify(const uint8_t msg[], size_t msg_len,
@@ -243,12 +245,12 @@ bool ECDSA_Verification_Operation::verify(const uint8_t msg[], size_t msg_len,
 
    const BigInt u1 = m_group.multiply_mod_order(m_group.mod_order(e), w);
    const BigInt u2 = m_group.multiply_mod_order(r, w);
-   const PointGFp R = m_gy_mul.multi_exp(u1, u2);
+   const PointGFp R = m_gy_mul.multi_exp(u1, u2, m_pool);
 
    if(R.is_zero())
       return false;
 
-   const BigInt v = m_group.mod_order(R.get_affine_x());
+   const BigInt v = m_group.mod_order(R.get_affine_x(m_pool));
    return (v == r);
    }
 

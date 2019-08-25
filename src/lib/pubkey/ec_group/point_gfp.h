@@ -314,7 +314,6 @@ class BOTAN_PUBLIC_API(2,0) PointGFp final
          return x;
          }
 
-
       BigInt BOTAN_DEPRECATED("Use version taking a BN_Pool") get_affine_x() const
          {
          BN_Pool pool;

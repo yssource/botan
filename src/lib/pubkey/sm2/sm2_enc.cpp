@@ -58,8 +58,8 @@ class SM2_Encryption_Operation final : public PK_Ops::Encryption
          const BigInt k = m_group.random_scalar(rng);
 
          const PointGFp C1 = m_group.blinded_base_point_multiply(k, rng, m_pool);
-         const BigInt x1 = C1.get_affine_x();
-         const BigInt y1 = C1.get_affine_y();
+         const BigInt x1 = C1.get_affine_x(m_pool);
+         const BigInt y1 = C1.get_affine_y(m_pool);
          std::vector<uint8_t> x1_bytes(p_bytes);
          std::vector<uint8_t> y1_bytes(p_bytes);
          BigInt::encode_1363(x1_bytes.data(), x1_bytes.size(), x1);
@@ -67,8 +67,8 @@ class SM2_Encryption_Operation final : public PK_Ops::Encryption
 
          const PointGFp kPB = m_mul_public_point.mul(k, rng, m_group.get_order(), m_pool);
 
-         const BigInt x2 = kPB.get_affine_x();
-         const BigInt y2 = kPB.get_affine_y();
+         const BigInt x2 = kPB.get_affine_x(m_pool);
+         const BigInt y2 = kPB.get_affine_y(m_pool);
          std::vector<uint8_t> x2_bytes(p_bytes);
          std::vector<uint8_t> y2_bytes(p_bytes);
          BigInt::encode_1363(x2_bytes.data(), x2_bytes.size(), x2);
@@ -198,8 +198,8 @@ class SM2_Decryption_Operation final : public PK_Ops::Decryption
          const PointGFp dbC1 = group.blinded_var_point_multiply(
             C1, m_key.private_value(), m_rng, m_pool);
 
-         const BigInt x2 = dbC1.get_affine_x();
-         const BigInt y2 = dbC1.get_affine_y();
+         const BigInt x2 = dbC1.get_affine_x(m_pool);
+         const BigInt y2 = dbC1.get_affine_y(m_pool);
 
          secure_vector<uint8_t> x2_bytes(p_bytes);
          secure_vector<uint8_t> y2_bytes(p_bytes);

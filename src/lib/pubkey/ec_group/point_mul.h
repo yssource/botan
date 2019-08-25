@@ -74,7 +74,8 @@ class PointGFp_Multi_Point_Precompute final
       * Not constant time, intended to use with public inputs
       */
       PointGFp multi_exp(const BigInt& k1,
-                         const BigInt& k2) const;
+                         const BigInt& k2,
+                         BN_Pool& pool) const;
    private:
       std::vector<PointGFp> m_M;
    };

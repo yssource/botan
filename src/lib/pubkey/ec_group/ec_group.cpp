@@ -555,8 +555,9 @@ PointGFp EC_Group::point(const BigInt& x, const BigInt& y) const
 
 PointGFp EC_Group::point_multiply(const BigInt& x, const PointGFp& pt, const BigInt& y) const
    {
+   BN_Pool pool; // fixme take as arg
    PointGFp_Multi_Point_Precompute xy_mul(get_base_point(), pt);
-   return xy_mul.multi_exp(x, y);
+   return xy_mul.multi_exp(x, y, pool);
    }
 
 PointGFp EC_Group::blinded_base_point_multiply(const BigInt& k,
@@ -574,7 +575,7 @@ BigInt EC_Group::blinded_base_point_multiply_x(const BigInt& k,
 
    if(pt.is_zero())
       return 0;
-   return pt.get_affine_x();
+   return pt.get_affine_x(pool);
    }
 
 BigInt EC_Group::random_scalar(RandomNumberGenerator& rng) const

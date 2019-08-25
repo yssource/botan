@@ -21,8 +21,9 @@ const size_t PointGFp_SCALAR_BLINDING_BITS = 80;
 PointGFp multi_exponentiate(const PointGFp& x, const BigInt& z1,
                             const PointGFp& y, const BigInt& z2)
    {
+   BN_Pool pool;
    PointGFp_Multi_Point_Precompute xy_mul(x, y);
-   return xy_mul.multi_exp(z1, z2);
+   return xy_mul.multi_exp(z1, z2, pool);
    }
 
 Blinded_Point_Multiply::Blinded_Point_Multiply(const PointGFp& base,
@@ -372,10 +373,9 @@ PointGFp_Multi_Point_Precompute::PointGFp_Multi_Point_Precompute(const PointGFp&
    }
 
 PointGFp PointGFp_Multi_Point_Precompute::multi_exp(const BigInt& z1,
-                                                    const BigInt& z2) const
+                                                    const BigInt& z2,
+                                                    BN_Pool& pool) const
    {
-   BN_Pool pool;
-
    const size_t z_bits = round_up(std::max(z1.bits(), z2.bits()), 2);
 
    PointGFp H = m_M[0].zero();
