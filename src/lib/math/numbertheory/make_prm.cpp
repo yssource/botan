@@ -135,6 +135,9 @@ BigInt random_prime(RandomNumberGenerator& rng,
 
    const size_t MAX_ATTEMPTS = 32*1024;
 
+   BN_Pool pool;
+   auto scope = pool.scope();
+
    const size_t mr_trials = miller_rabin_test_iterations(bits, prob, true);
 
    while(true)
@@ -169,7 +172,7 @@ BigInt random_prime(RandomNumberGenerator& rng,
             First do a single M-R iteration to quickly elimate most non-primes,
             before doing the coprimality check which is expensive
             */
-            if(is_miller_rabin_probable_prime(p, mod_p, rng, 1) == false)
+            if(is_miller_rabin_probable_prime(p, mod_p, rng, 1, pool) == false)
                continue;
 
             /*
@@ -183,10 +186,10 @@ BigInt random_prime(RandomNumberGenerator& rng,
          if(p.bits() > bits)
             break;
 
-         if(is_miller_rabin_probable_prime(p, mod_p, rng, mr_trials) == false)
+         if(is_miller_rabin_probable_prime(p, mod_p, rng, mr_trials, pool) == false)
             continue;
 
-         if(prob > 32 && !is_lucas_probable_prime(p, mod_p))
+         if(prob > 32 && !is_lucas_probable_prime(p, mod_p, pool))
             continue;
 
          return p;
@@ -247,7 +250,7 @@ BigInt generate_rsa_prime(RandomNumberGenerator& keygen_rng,
          * currently a single Miller-Rabin test is faster than computing gcd,
          * and this eliminates almost all wasted gcd computations.
          */
-         if(is_miller_rabin_probable_prime(p, mod_p, prime_test_rng, 1) == false)
+         if(is_miller_rabin_probable_prime(p, mod_p, prime_test_rng, 1, pool) == false)
             continue;
 
          /*
@@ -259,7 +262,7 @@ BigInt generate_rsa_prime(RandomNumberGenerator& keygen_rng,
          if(p.bits() > bits)
             break;
 
-         if(is_miller_rabin_probable_prime(p, mod_p, prime_test_rng, mr_trials) == true)
+         if(is_miller_rabin_probable_prime(p, mod_p, prime_test_rng, mr_trials, pool) == true)
             return p;
          }
       }
