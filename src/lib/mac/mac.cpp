@@ -32,6 +32,10 @@
   #include <botan/internal/siphash.h>
 #endif
 
+#if defined(BOTAN_HAS_SKEIN_512_MAC)
+  #include <botan/internal/skein_512_mac.h>
+#endif
+
 #if defined(BOTAN_HAS_ANSI_X919_MAC)
   #include <botan/internal/x919_mac.h>
 #endif
@@ -92,6 +96,17 @@ MessageAuthenticationCode::create(const std::string& algo_spec,
       if(provider.empty() || provider == "base")
          {
          return std::make_unique<SipHash>(req.arg_as_integer(0, 2), req.arg_as_integer(1, 4));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_SKEIN_512_MAC)
+   if(req.algo_name() == "Skein-512")
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return std::unique_ptr<MessageAuthenticationCode>(
+            new Skein_512_MAC(req.arg_as_integer(0, 512), req.arg(1, "")));
          }
       }
 #endif
