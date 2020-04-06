@@ -1,0 +1,11 @@
+<defines>
+SKEIN_512_MAC -> 20200406
+</defines>
+
+<header:internal>
+skein_512_mac.h
+</header:internal>
+
+<requires>
+skein
+</requires>

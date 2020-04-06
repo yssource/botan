@@ -52,8 +52,14 @@ void Skein_512::clear()
    {
    zeroise(m_buffer);
    m_buf_pos = 0;
+   m_key.clear();
 
    initial_block();
+   }
+
+void Skein_512::set_key(const uint8_t key[], size_t len)
+   {
+   m_key.assign(key, key + len);
    }
 
 void Skein_512::reset_tweak(type_code type, bool is_final)
