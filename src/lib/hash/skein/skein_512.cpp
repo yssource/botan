@@ -22,7 +22,9 @@ Skein_512::Skein_512(size_t arg_output_bits,
    if(m_output_bits == 0 || m_output_bits % 8 != 0 || m_output_bits > 512)
       throw Invalid_Argument("Bad output bits size for Skein-512");
 
-   initial_block();
+   // Default all-zeros key:
+   const uint8_t zeros[64] = { 0 };
+   m_threefish->set_key(zeros, sizeof(zeros));
    }
 
 std::string Skein_512::name() const
@@ -65,18 +67,13 @@ void Skein_512::set_key(const uint8_t key[], size_t len)
 void Skein_512::reset_tweak(type_code type, bool is_final)
    {
    m_T[0] = 0;
-
    m_T[1] = (static_cast<uint64_t>(type) << 56) |
-          (static_cast<uint64_t>(1) << 62) |
-          (static_cast<uint64_t>(is_final) << 63);
+            (static_cast<uint64_t>(1) << 62) |
+            (static_cast<uint64_t>(is_final) << 63);
    }
 
 void Skein_512::initial_block()
    {
-   const uint8_t zeros[64] = { 0 };
-
-   m_threefish->set_key(zeros, sizeof(zeros));
-
    // ASCII("SHA3") followed by version (0x0001) code
    uint8_t config_str[32] = { 0x53, 0x48, 0x41, 0x33, 0x01, 0x00, 0 };
    store_le(uint32_t(m_output_bits), config_str + 8);
@@ -94,9 +91,8 @@ void Skein_512::initial_block()
       if(m_personalization.length() > 64)
          throw Invalid_Argument("Skein personalization must be less than 64 bytes");
 
-      const uint8_t* bits = cast_char_ptr_to_uint8(m_personalization.data());
       reset_tweak(SKEIN_PERSONALIZATION, true);
-      ubi_512(bits, m_personalization.length());
+      ubi_512(cast_char_ptr_to_uint8(m_personalization.data()), m_personalization.length());
       }
 
    reset_tweak(SKEIN_MSG, false);

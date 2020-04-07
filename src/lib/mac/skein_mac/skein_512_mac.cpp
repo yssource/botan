@@ -44,7 +44,7 @@ MessageAuthenticationCode* Skein_512_MAC::clone() const
 
 Key_Length_Specification Skein_512_MAC::key_spec() const
    {
-   return Key_Length_Specification(0, 64); // ???
+   return Key_Length_Specification(1, 64);
    }
 
 void Skein_512_MAC::add_data(const uint8_t[], size_t)

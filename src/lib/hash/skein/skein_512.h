@@ -36,14 +36,12 @@ class Skein_512 final : public HashFunction
 
       void set_key(const uint8_t key[], size_t key_len);
 
+      const std::string& personalization() const { return m_personalization; }
+
       std::unique_ptr<HashFunction> copy_state() const override;
       std::string name() const override;
       void clear() override;
-
-      std::string personalization() const { return m_personalization; }
    private:
-      friend class Skein_512_MAC;
-
       enum type_code {
          SKEIN_KEY = 0,
          SKEIN_CONFIG = 4,
@@ -69,6 +67,7 @@ class Skein_512 final : public HashFunction
       std::unique_ptr<Threefish_512> m_threefish;
       secure_vector<uint64_t> m_T;
       secure_vector<uint8_t> m_buffer;
+      secure_vector<uint8_t> m_key;
       size_t m_buf_pos;
    };
 
