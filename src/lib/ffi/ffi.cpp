@@ -224,6 +224,27 @@ int botan_ffi_supports_api(uint32_t api_version)
    return -1;
    }
 
+uint32_t botan_ffi_tls_api_version()
+   {
+#if defined(BOTAN_HAS_FFI_TLS)
+   return BOTAN_HAS_FFI_TLS;
+#else
+   return 0;
+#endif
+   }
+
+int botan_ffi_supports_api(uint32_t api_version)
+   {
+#if defined(BOTAN_HAS_FFI_TLS)
+   // This is the API introduced in 3.0
+   if(api_version == 20210108))
+      return BOTAN_FFI_SUCCESS;
+#endif
+
+   // Something else, or TLS not supported:
+   return -1;
+   }
+
 const char* botan_version_string()
    {
    return Botan::version_cstr();
