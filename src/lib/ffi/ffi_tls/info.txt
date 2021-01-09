@@ -1,0 +1,11 @@
+<defines>
+FFI_TLS -> 20210108
+</defines>
+
+<header:public>
+ffi_tls.h
+</header:public>
+
+<requires>
+tls
+</requires>
