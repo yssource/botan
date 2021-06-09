@@ -106,7 +106,7 @@ std::vector<X509_Certificate> Flatfile_Certificate_Store::find_all_certs(
    return found_certs;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Flatfile_Certificate_Store::find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const
    {
    if(key_hash.size() != 20)
@@ -121,10 +121,10 @@ Flatfile_Certificate_Store::find_cert_by_pubkey_sha1(const std::vector<uint8_t>&
       return found_cert->second;
       }
 
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Flatfile_Certificate_Store::find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const
    {
    if(subject_hash.size() != 32)
@@ -137,10 +137,10 @@ Flatfile_Certificate_Store::find_cert_by_raw_subject_dn_sha256(const std::vector
       return found_cert->second;
       }
 
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 
-std::optional<X509_CRL> Flatfile_Certificate_Store::find_crl_for(const X509_Certificate& subject) const
+std::experimental::optional<X509_CRL> Flatfile_Certificate_Store::find_crl_for(const X509_Certificate& subject) const
    {
    BOTAN_UNUSED(subject);
    return {};

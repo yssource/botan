@@ -44,7 +44,7 @@ Certificate_Store_In_SQL::Certificate_Store_In_SQL(std::shared_ptr<SQL_Database>
    }
 
 // Certificate handling
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_In_SQL::find_cert(const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const
    {
    std::shared_ptr<SQL_Database::Statement> stmt;
@@ -70,7 +70,7 @@ Certificate_Store_In_SQL::find_cert(const X509_DN& subject_dn, const std::vector
       return X509_Certificate(blob.first, blob.second);
       }
 
-   return std::optional<X509_Certificate>();
+   return std::experimental::optional<X509_Certificate>();
    }
 
 std::vector<X509_Certificate>
@@ -95,7 +95,7 @@ Certificate_Store_In_SQL::find_all_certs(const X509_DN& subject_dn, const std::v
       stmt->bind(2, key_id);
       }
 
-   std::optional<X509_Certificate> cert;
+   std::experimental::optional<X509_Certificate> cert;
    while(stmt->step())
       {
       auto blob = stmt->get_blob(0);
@@ -105,19 +105,19 @@ Certificate_Store_In_SQL::find_all_certs(const X509_DN& subject_dn, const std::v
    return certs;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_In_SQL::find_cert_by_pubkey_sha1(const std::vector<uint8_t>& /*key_hash*/) const
    {
    throw Not_Implemented("Certificate_Store_In_SQL::find_cert_by_pubkey_sha1");
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_In_SQL::find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& /*subject_hash*/) const
    {
    throw Not_Implemented("Certificate_Store_In_SQL::find_cert_by_raw_subject_dn_sha256");
    }
 
-std::optional<X509_CRL>
+std::experimental::optional<X509_CRL>
 Certificate_Store_In_SQL::find_crl_for(const X509_Certificate& subject) const
    {
    auto all_crls = generate_crls();
@@ -128,7 +128,7 @@ Certificate_Store_In_SQL::find_crl_for(const X509_Certificate& subject) const
          return crl;
       }
 
-   return std::optional<X509_CRL>();
+   return std::experimental::optional<X509_CRL>();
    }
 
 std::vector<X509_DN> Certificate_Store_In_SQL::all_subjects() const

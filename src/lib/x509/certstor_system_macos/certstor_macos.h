@@ -41,7 +41,7 @@ class BOTAN_PUBLIC_API(2, 10) Certificate_Store_MacOS final : public Certificate
       * Find a certificate by Subject DN and (optionally) key identifier
       * @return the first certificate that matches
       */
-      std::optional<X509_Certificate> find_cert(
+      std::experimental::optional<X509_Certificate> find_cert(
          const X509_DN& subject_dn,
          const std::vector<uint8_t>& key_id) const override;
 
@@ -57,20 +57,20 @@ class BOTAN_PUBLIC_API(2, 10) Certificate_Store_MacOS final : public Certificate
       * public key.
       * @return a matching certificate or nullptr otherwise
       */
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
       find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
 
       /**
        * @throws Botan::Not_Implemented
        */
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
       find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
 
       /**
        * Fetching CRLs is not supported by the keychain on macOS. This will
        * always return an empty list.
        */
-      std::optional<X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
+      std::experimental::optional<X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
 
    private:
       std::shared_ptr<Certificate_Store_MacOS_Impl> m_impl;

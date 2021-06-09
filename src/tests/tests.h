@@ -21,7 +21,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <optional>
+#include <experimental/optional>
 
 namespace Botan {
 
@@ -273,9 +273,9 @@ class Test
                }
 
             template<typename T>
-            bool test_not_nullopt(const std::string& what, std::optional<T> val)
+            bool test_not_nullopt(const std::string& what, std::experimental::optional<T> val)
                {
-               if(val == std::nullopt)
+               if(val == std::experimental::nullopt)
                   return test_failure(what + " was nullopt");
                else
                   return test_success(what + " was not nullopt");

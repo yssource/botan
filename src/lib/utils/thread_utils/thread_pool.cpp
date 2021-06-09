@@ -13,23 +13,23 @@ namespace Botan {
 
 namespace {
 
-std::optional<size_t> global_thread_pool_size()
+std::experimental::optional<size_t> global_thread_pool_size()
    {
    std::string var;
    if(OS::read_env_variable(var, "BOTAN_THREAD_POOL_SIZE"))
       {
       try
          {
-         return std::optional<size_t>(std::stoul(var, nullptr));
+         return std::experimental::optional<size_t>(std::stoul(var, nullptr));
          }
       catch(std::exception&) { /* ignore it */ }
 
       if(var == "none")
-         return std::nullopt;
+         return std::experimental::nullopt;
       }
 
    // If it was neither a number nor a special value, then ignore it.
-   return std::optional<size_t>(0);
+   return std::experimental::optional<size_t>(0);
    }
 
 }
@@ -41,11 +41,11 @@ Thread_Pool& Thread_Pool::global_instance()
    return g_thread_pool;
    }
 
-Thread_Pool::Thread_Pool(std::optional<size_t> opt_pool_size)
+Thread_Pool::Thread_Pool(std::experimental::optional<size_t> opt_pool_size)
    {
    m_shutdown = false;
 
-   if(!opt_pool_size.has_value())
+   if(!opt_pool_size)
       return;
 
    size_t pool_size = opt_pool_size.value();

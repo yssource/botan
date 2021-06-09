@@ -38,7 +38,7 @@ void poly_double(uint8_t out[], const uint8_t in[])
 
    const uint64_t carry = POLY * (W[0] >> 63);
 
-   if constexpr(LIMBS > 0)
+   if(LIMBS > 0)
       {
       for(size_t i = 0; i != LIMBS - 1; ++i)
          W[i] = (W[i] << 1) ^ (W[i+1] >> 63);
@@ -59,7 +59,7 @@ void poly_double_le(uint8_t out[], const uint8_t in[])
 
    const uint64_t carry = POLY * (W[LIMBS-1] >> 63);
 
-   if constexpr(LIMBS > 0)
+   if(LIMBS > 0)
       {
       for(size_t i = 0; i != LIMBS - 1; ++i)
          W[LIMBS-1-i] = (W[LIMBS-1-i] << 1) ^ (W[LIMBS-2-i] >> 63);

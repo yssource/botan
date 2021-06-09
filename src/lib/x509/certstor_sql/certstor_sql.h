@@ -40,7 +40,7 @@ class BOTAN_PUBLIC_API(2,0) Certificate_Store_In_SQL : public Certificate_Store
       /**
       * Returns the first certificate with matching subject DN and optional key ID.
       */
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
          find_cert(const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
 
       /*
@@ -50,10 +50,10 @@ class BOTAN_PUBLIC_API(2,0) Certificate_Store_In_SQL : public Certificate_Store
       std::vector<X509_Certificate> find_all_certs(
          const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
 
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
          find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
 
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
          find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
 
       /**
@@ -104,7 +104,7 @@ class BOTAN_PUBLIC_API(2,0) Certificate_Store_In_SQL : public Certificate_Store
       /**
       * Generates a CRL for all certificates issued by the given issuer.
       */
-      std::optional<X509_CRL>
+      std::experimental::optional<X509_CRL>
          find_crl_for(const X509_Certificate& issuer) const override;
 
    private:

@@ -16,23 +16,23 @@ namespace Botan {
 
 Certificate_Store::~Certificate_Store() {}
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store::find_cert(const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const
    {
    const auto certs = find_all_certs(subject_dn, key_id);
 
    if(certs.empty())
       {
-      return std::nullopt;
+      return std::experimental::nullopt;
       }
 
    // `count` might be greater than 1, but we'll just select the first match
    return certs.front();
    }
 
-std::optional<X509_CRL> Certificate_Store::find_crl_for(const X509_Certificate&) const
+std::experimental::optional<X509_CRL> Certificate_Store::find_crl_for(const X509_Certificate&) const
    {
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 
 void Certificate_Store_In_Memory::add_certificate(const X509_Certificate& cert)
@@ -52,7 +52,7 @@ std::vector<X509_DN> Certificate_Store_In_Memory::all_subjects() const
    return subjects;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_In_Memory::find_cert(const X509_DN& subject_dn,
                                        const std::vector<uint8_t>& key_id) const
    {
@@ -71,7 +71,7 @@ Certificate_Store_In_Memory::find_cert(const X509_DN& subject_dn,
          return cert;
       }
 
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 
 std::vector<X509_Certificate> Certificate_Store_In_Memory::find_all_certs(
@@ -97,7 +97,7 @@ std::vector<X509_Certificate> Certificate_Store_In_Memory::find_all_certs(
    return matches;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_In_Memory::find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const
    {
    if(key_hash.size() != 20)
@@ -111,10 +111,10 @@ Certificate_Store_In_Memory::find_cert_by_pubkey_sha1(const std::vector<uint8_t>
          return cert;
    }
 
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_In_Memory::find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const
    {
    if(subject_hash.size() != 32)
@@ -128,7 +128,7 @@ Certificate_Store_In_Memory::find_cert_by_raw_subject_dn_sha256(const std::vecto
          return cert;
    }
 
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 
 void Certificate_Store_In_Memory::add_crl(const X509_CRL& crl)
@@ -150,7 +150,7 @@ void Certificate_Store_In_Memory::add_crl(const X509_CRL& crl)
    m_crls.push_back(crl);
    }
 
-std::optional<X509_CRL> Certificate_Store_In_Memory::find_crl_for(const X509_Certificate& subject) const
+std::experimental::optional<X509_CRL> Certificate_Store_In_Memory::find_crl_for(const X509_Certificate& subject) const
    {
    const std::vector<uint8_t>& key_id = subject.authority_key_id();
 

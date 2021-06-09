@@ -209,13 +209,13 @@ std::vector<X509_DN> Certificate_Store_Windows::all_subjects() const
    return subject_dns;
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_Windows::find_cert(const Botan::X509_DN& subject_dn,
                                      const std::vector<uint8_t>& key_id) const
    {
    const auto certs = find_cert_by_dn_and_key_id(subject_dn, key_id, true);
    if(certs.empty())
-      return std::nullopt;
+      return std::experimental::nullopt;
    else
       return certs.front();
    }
@@ -227,7 +227,7 @@ std::vector<X509_Certificate> Certificate_Store_Windows::find_all_certs(
    return find_cert_by_dn_and_key_id(subject_dn, key_id, false);
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_Windows::find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const
    {
    if(key_hash.size() != 20)
@@ -243,12 +243,12 @@ Certificate_Store_Windows::find_cert_by_pubkey_sha1(const std::vector<uint8_t>& 
 
    const auto certs = search_cert_stores(blob, CERT_FIND_KEY_IDENTIFIER, filter, true);
    if(certs.empty())
-      return std::nullopt;
+      return std::experimental::nullopt;
    else
       return certs.front();
    }
 
-std::optional<X509_Certificate>
+std::experimental::optional<X509_Certificate>
 Certificate_Store_Windows::find_cert_by_raw_subject_dn_sha256(
    const std::vector<uint8_t>& subject_hash) const
    {
@@ -256,10 +256,10 @@ Certificate_Store_Windows::find_cert_by_raw_subject_dn_sha256(
    throw Not_Implemented("Certificate_Store_Windows::find_cert_by_raw_subject_dn_sha256");
    }
 
-std::optional<X509_CRL> Certificate_Store_Windows::find_crl_for(const X509_Certificate& subject) const
+std::experimental::optional<X509_CRL> Certificate_Store_Windows::find_crl_for(const X509_Certificate& subject) const
    {
    // TODO: this could be implemented by using the CertFindCRLInStore function
    BOTAN_UNUSED(subject);
-   return std::nullopt;
+   return std::experimental::nullopt;
    }
 }

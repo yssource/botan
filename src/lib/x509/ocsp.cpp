@@ -191,7 +191,7 @@ Certificate_Status_Code Response::check_signature(const std::vector<Certificate_
    if (m_responses.empty())
       return m_dummy_response_status;
 
-   std::optional<X509_Certificate> signing_cert;
+   std::experimental::optional<X509_Certificate> signing_cert;
 
    for(size_t i = 0; i != trusted_roots.size(); ++i)
       {

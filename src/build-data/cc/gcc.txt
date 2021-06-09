@@ -2,10 +2,10 @@ macro_name GCC
 
 binary_name g++
 
-lang_flags "-std=c++17 -D_REENTRANT"
+lang_flags "-std=c++14 -D_REENTRANT"
 
-# This should only contain flags which are included in GCC 9
-warning_flags "-Wall -Wextra -Wpedantic -Wstrict-aliasing -Wcast-align -Wmissing-declarations -Wpointer-arith -Wcast-qual -Wzero-as-null-pointer-constant -Wnon-virtual-dtor -Wold-style-cast -Wsuggest-override -Wshadow -Wextra-semi"
+# This should only contain flags which are included in GCC 7
+warning_flags "-Wall -Wextra -Wpedantic -Wstrict-aliasing -Wcast-align -Wmissing-declarations -Wpointer-arith -Wcast-qual -Wzero-as-null-pointer-constant -Wnon-virtual-dtor -Wold-style-cast -Wsuggest-override -Wshadow"
 
 # Boost headers have 0 as nullptr and non-virtual-dtor issues so we can't werror on them
 werror_flags "-Werror -Wno-error=strict-overflow -Wno-error=zero-as-null-pointer-constant -Wno-error=non-virtual-dtor"

@@ -18,7 +18,7 @@
 #include <thread>
 #include <future>
 #include <condition_variable>
-#include <optional>
+#include <experimental/optional>
 
 namespace Botan {
 
@@ -37,7 +37,7 @@ class BOTAN_TEST_API Thread_Pool
       *        is nullopt then the thread pool is disabled; all
       *        work is executed immediately when queued.
       */
-      Thread_Pool(std::optional<size_t> pool_size);
+      Thread_Pool(std::experimental::optional<size_t> pool_size);
 
       /**
       * Initialize a thread pool with some number of threads
@@ -45,7 +45,7 @@ class BOTAN_TEST_API Thread_Pool
       *        then some default value is chosen.
       */
       Thread_Pool(size_t pool_size = 0) :
-         Thread_Pool(std::optional<size_t>(pool_size))
+         Thread_Pool(std::experimental::optional<size_t>(pool_size))
          {}
 
       ~Thread_Pool() { shutdown(); }
@@ -66,9 +66,9 @@ class BOTAN_TEST_API Thread_Pool
       void queue_thunk(std::function<void ()>);
 
       template<class F, class... Args>
-      auto run(F&& f, Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type>
+      auto run(F&& f, Args&&... args) -> std::future<typename std::result_of<F(Args...)>::type>
          {
-         typedef typename std::invoke_result<F, Args...>::type return_type;
+         typedef typename std::result_of<F(Args...)>::type return_type;
 
          auto future_work = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
          auto task = std::make_shared<std::packaged_task<return_type ()>>(future_work);

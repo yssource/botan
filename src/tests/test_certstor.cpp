@@ -349,8 +349,8 @@ Test::Result test_certstor_load_allcert()
       Botan::X509_Certificate root_cert(Test::data_dir() + "/x509/x509test/root.pem");
       Botan::X509_Certificate valid_cert(Test::data_dir() + "/x509/x509test/ValidCert.pem");
       std::vector<uint8_t> key_id;
-      result.confirm("Root cert found", store.find_cert(root_cert.subject_dn(), key_id) != std::nullopt);
-      result.confirm("ValidCert found", store.find_cert(valid_cert.subject_dn(), key_id) != std::nullopt);
+      result.confirm("Root cert found", store.find_cert(root_cert.subject_dn(), key_id) != std::experimental::nullopt);
+      result.confirm("ValidCert found", store.find_cert(valid_cert.subject_dn(), key_id) != std::experimental::nullopt);
       return result;
       }
    catch(std::exception& e)

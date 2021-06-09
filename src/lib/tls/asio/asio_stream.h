@@ -639,7 +639,7 @@ class Stream
 
             void tls_verify_cert_chain(
                const std::vector<X509_Certificate>& cert_chain,
-               const std::vector<std::optional<OCSP::Response>>& ocsp_responses,
+               const std::vector<std::experimental::optional<OCSP::Response>>& ocsp_responses,
                const std::vector<Certificate_Store*>& trusted_roots,
                Usage_Type usage,
                const std::string& hostname,
@@ -703,7 +703,7 @@ class Stream
 
          // Do not attempt to instantiate the native_handle when a custom (mocked) channel type template parameter has
          // been specified. This allows mocking the native_handle in test code.
-         if constexpr(std::is_same<ChannelT, Channel>::value)
+         if(std::is_same<ChannelT, Channel>::value)
             {
             try_with_error_code([&]
                {

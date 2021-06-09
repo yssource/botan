@@ -40,7 +40,7 @@ uint32_t to_u32bit(const std::string& str)
 
    const unsigned long int x = std::stoul(str);
 
-   if constexpr(sizeof(unsigned long int) > 4)
+   if(sizeof(unsigned long int) > 4)
       {
       // x might be uint64
       if(x > std::numeric_limits<uint32_t>::max())

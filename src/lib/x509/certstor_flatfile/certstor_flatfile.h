@@ -54,23 +54,23 @@ class BOTAN_PUBLIC_API(2, 11) Flatfile_Certificate_Store final : public Certific
       * public key.
       * @return a matching certificate or nullptr otherwise
       */
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
       find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
 
-      std::optional<X509_Certificate>
+      std::experimental::optional<X509_Certificate>
       find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
 
       /**
        * Fetching CRLs is not supported by this certificate store. This will
        * always return an empty list.
        */
-      std::optional<X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
+      std::experimental::optional<X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
 
    private:
       std::vector<X509_DN> m_all_subjects;
       std::map<X509_DN, std::vector<X509_Certificate>> m_dn_to_cert;
-      std::map<std::vector<uint8_t>, std::optional<X509_Certificate>> m_pubkey_sha1_to_cert;
-      std::map<std::vector<uint8_t>, std::optional<X509_Certificate>> m_subject_dn_sha256_to_cert;
+      std::map<std::vector<uint8_t>, std::experimental::optional<X509_Certificate>> m_pubkey_sha1_to_cert;
+      std::map<std::vector<uint8_t>, std::experimental::optional<X509_Certificate>> m_subject_dn_sha256_to_cert;
    };
 }
 
