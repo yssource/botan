@@ -16,17 +16,27 @@
 #include <botan/tls_version.h>
 #include <botan/secmem.h>
 #include <botan/pkix_types.h>
+
+#include <algorithm>
 #include <vector>
 #include <string>
-#include <map>
 #include <set>
 
 namespace Botan {
 
+class RandomNumberGenerator;
+
 namespace TLS {
 
 #if defined(BOTAN_HAS_TLS_13)
-class Key_Share_Content;
+class Key_Share_Entry;
+class Callbacks;
+
+enum class PSK_Key_Exchange_Mode : uint8_t {
+   PSK_KE = 0,
+   PSK_DHE_KE = 1
+};
+
 #endif
 class Policy;
 class TLS_Data_Reader;
@@ -46,11 +56,15 @@ enum Handshake_Extension_Type {
    TLSEXT_ENCRYPT_THEN_MAC          = 22,
    TLSEXT_EXTENDED_MASTER_SECRET    = 23,
 
+   TLSEXT_RECORD_SIZE_LIMIT         = 28,
+
    TLSEXT_SESSION_TICKET            = 35,
 
    TLSEXT_SUPPORTED_VERSIONS        = 43,
 #if defined(BOTAN_HAS_TLS_13)
    TLSEXT_COOKIE                    = 44,
+
+   TLSEXT_PSK_KEY_EXCHANGE_MODES    = 45,
 
    TLSEXT_SIGNATURE_ALGORITHMS_CERT = 50,
    TLSEXT_KEY_SHARE                 = 51,
@@ -442,6 +456,34 @@ class BOTAN_UNSTABLE_API Supported_Versions final : public Extension
       std::vector<Protocol_Version> m_versions;
    };
 
+/**
+* Record Size Limit (RFC 8449)
+*
+* TODO: the record size limit will currently not be honored by the record protocol
+*/
+class BOTAN_UNSTABLE_API Record_Size_Limit final : public Extension
+   {
+   public:
+      static Handshake_Extension_Type static_type()
+         { return TLSEXT_RECORD_SIZE_LIMIT; }
+
+      Handshake_Extension_Type type() const override { return static_type(); }
+
+      explicit Record_Size_Limit(const uint16_t limit) :
+         m_limit(limit) {}
+
+      Record_Size_Limit(TLS_Data_Reader& reader, uint16_t extension_size);
+
+      uint16_t limit() const { return m_limit; }
+
+      std::vector<uint8_t> serialize(Connection_Side whoami) const override;
+
+      bool empty() const override { return m_limit == 0; }
+
+   private:
+      uint16_t m_limit;
+   };
+
 using Named_Group = Group_Params;
 
 #if defined(BOTAN_HAS_TLS_13)
@@ -472,6 +514,33 @@ class BOTAN_UNSTABLE_API Cookie final : public Extension
    };
 
 /**
+* Pre-Shared Key Exchange Modes from RFC 8446 4.2.9
+*/
+class BOTAN_UNSTABLE_API PSK_Key_Exchange_Modes final : public Extension
+   {
+   public:
+      static Handshake_Extension_Type static_type()
+         { return TLSEXT_PSK_KEY_EXCHANGE_MODES; }
+
+      Handshake_Extension_Type type() const override { return static_type(); }
+
+      std::vector<uint8_t> serialize(Connection_Side whoami) const override;
+
+      bool empty() const override { return m_modes.empty(); }
+
+      const std::vector<PSK_Key_Exchange_Mode>& modes() const { return m_modes; }
+
+      explicit PSK_Key_Exchange_Modes(std::vector<PSK_Key_Exchange_Mode> modes)
+         : m_modes(std::move(modes)) {}
+
+      explicit PSK_Key_Exchange_Modes(TLS_Data_Reader& reader, uint16_t extension_size);
+
+   private:
+      std::vector<PSK_Key_Exchange_Mode> m_modes;
+   };
+
+
+/**
 * Signature_Algorithms_Cert from RFC 8446
 */
 class BOTAN_UNSTABLE_API Signature_Algorithms_Cert final : public Extension
@@ -496,87 +565,22 @@ class BOTAN_UNSTABLE_API Signature_Algorithms_Cert final : public Extension
       const Signature_Algorithms m_siganture_algorithms;
    };
 
-/**
-* KeyShareEntry from RFC 8446 B.3.1
-*/
-class Key_Share_Entry
-   {
-   public:
-      explicit Key_Share_Entry() = default;
-
-      explicit Key_Share_Entry(Named_Group group, const std::vector<uint8_t>& key_exchange);
-
-      bool empty() const;
-
-      size_t size() const;
-
-      std::vector<uint8_t> serialize() const;
-
-   private:
-      Named_Group m_group;
-      std::vector<uint8_t> m_key_exchange;
-   };
-
 class Key_Share_Content
    {
    public:
       virtual std::vector<uint8_t> serialize() const = 0;
       virtual bool empty() const = 0;
       virtual ~Key_Share_Content() = default;
-   };
 
-class Key_Share_ClientHello final : public Key_Share_Content
-   {
-   public:
-      explicit Key_Share_ClientHello(TLS_Data_Reader& reader,
-                                     uint16_t extension_size);
+      virtual secure_vector<uint8_t> exchange(const Key_Share_Content*, const Policy&, Callbacks&, RandomNumberGenerator&) const
+         {
+         throw Invalid_Argument("exchange should only be called on Key_Share_ClientHello");
+         }
 
-      explicit Key_Share_ClientHello(const std::vector<Key_Share_Entry>& client_shares);
-
-      ~Key_Share_ClientHello() override;
-
-      std::vector<uint8_t> serialize() const override;
-
-      bool empty() const override;
-
-   private:
-      std::vector<Key_Share_Entry> m_client_shares;
-   };
-
-class Key_Share_ServerHello final : public Key_Share_Content
-   {
-   public:
-      explicit Key_Share_ServerHello(TLS_Data_Reader& reader,
-                                     uint16_t extension_size);
-
-      explicit Key_Share_ServerHello(const Key_Share_Entry& server_share);
-
-      ~Key_Share_ServerHello() override;
-
-      std::vector<uint8_t> serialize() const override;
-
-      bool empty() const override;
-
-   private:
-      Key_Share_Entry m_server_share;
-   };
-
-class Key_Share_HelloRetryRequest final : public Key_Share_Content
-   {
-   public:
-      explicit Key_Share_HelloRetryRequest(TLS_Data_Reader& reader,
-                                           uint16_t extension_size);
-
-      explicit Key_Share_HelloRetryRequest(Named_Group selected_group);
-
-      ~Key_Share_HelloRetryRequest() override;
-
-      std::vector<uint8_t> serialize() const override;
-
-      bool empty() const override;
-
-   private:
-      Named_Group m_selected_group;
+      virtual const Key_Share_Entry& get_singleton_entry() const
+         {
+         throw Invalid_Argument("get_singleton_entry should only be called on Key_Share_ServerHello");
+         }
    };
 
 /**
@@ -594,15 +598,18 @@ class BOTAN_UNSTABLE_API Key_Share final : public Extension
 
       bool empty() const override;
 
+      // TODO: this will only work as client_keyshare.exchange(server_keyshare) for now
+      secure_vector<uint8_t> exchange(const Key_Share* peer_keyshare, const Policy& policy, Callbacks& cb, RandomNumberGenerator& rng) const;
+
       explicit Key_Share(TLS_Data_Reader& reader,
                          uint16_t extension_size,
                          Connection_Side from);
 
       // constuctor used for ClientHello msg
-      explicit Key_Share(const std::vector<Key_Share_Entry>& client_shares);
+      explicit Key_Share(const Policy& policy, Callbacks& cb, RandomNumberGenerator& rng);
 
       // constuctor used for ServerHello msg
-      explicit Key_Share(const Key_Share_Entry& server_share);
+      // explicit Key_Share(const Key_Share_Entry& server_share);
 
       // constuctor used for HelloRetryRequest msg
       explicit Key_Share(Named_Group selected_group);
@@ -655,23 +662,31 @@ class BOTAN_UNSTABLE_API Extensions final
          return get<T>() != nullptr;
          }
 
-      void add(std::unique_ptr<Extension> extn)
+      bool has(Handshake_Extension_Type type) const
          {
-         m_extensions[extn->type()].reset(extn.release());
+         return get(type) != nullptr;
          }
+
+      size_t size() const
+         {
+         return m_extensions.size();
+         }
+
+      void add(std::unique_ptr<Extension> extn);
 
       void add(Extension* extn)
          {
-         m_extensions[extn->type()].reset(extn);
+         add(std::unique_ptr<Extension>(extn));
          }
 
       Extension* get(Handshake_Extension_Type type) const
          {
-         auto i = m_extensions.find(type);
+         const auto i = std::find_if(m_extensions.cbegin(), m_extensions.cend(),
+                                     [type](const auto &ext) {
+                                        return ext->type() == type;
+                                     });
 
-         if(i != m_extensions.end())
-            return i->second.get();
-         return nullptr;
+         return (i != m_extensions.end()) ? i->get() : nullptr;
          }
 
       std::vector<uint8_t> serialize(Connection_Side whoami) const;
@@ -679,13 +694,45 @@ class BOTAN_UNSTABLE_API Extensions final
       void deserialize(TLS_Data_Reader& reader, Connection_Side from);
 
       /**
+       * Take the extension with the given type out of the extensions list.
+       * Returns a nullptr if the extension didn't exist.
+       */
+      template<typename T>
+      decltype(auto) take()
+         {
+         std::unique_ptr<T> out_ptr;
+
+         auto ext = take(T::static_type());
+         if (ext != nullptr) {
+            out_ptr.reset(dynamic_cast<T*>(ext.get()));
+            BOTAN_ASSERT_NOMSG(out_ptr != nullptr);
+            ext.release();
+         }
+
+         return out_ptr;
+         }
+
+      /**
+       * Take the extension with the given type out of the extensions list.
+       * Returns a nullptr if the extension didn't exist.
+       */
+      std::unique_ptr<Extension> take(Handshake_Extension_Type type);
+
+      /**
       * Remove an extension from this extensions object, if it exists.
       * Returns true if the extension existed (and thus is now removed),
       * otherwise false (the extension wasn't set in the first place).
+      *
+      * Note: not used internally, might be used in Callbacks::tls_modify_extensions()
       */
-      bool remove_extension(Handshake_Extension_Type typ);
+      bool remove_extension(Handshake_Extension_Type type)
+         {
+         return take(type) != nullptr;
+         }
 
       Extensions() = default;
+      Extensions(Extensions&&) = default;
+      Extensions& operator=(Extensions&&) = default;
 
       Extensions(TLS_Data_Reader& reader, Connection_Side side)
          {
@@ -696,7 +743,7 @@ class BOTAN_UNSTABLE_API Extensions final
       Extensions(const Extensions&) = delete;
       Extensions& operator=(const Extensions&) = delete;
 
-      std::map<Handshake_Extension_Type, std::unique_ptr<Extension>> m_extensions;
+      std::vector<std::unique_ptr<Extension>> m_extensions;
    };
 
 }

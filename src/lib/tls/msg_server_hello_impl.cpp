@@ -11,6 +11,7 @@
 #include <botan/internal/msg_server_hello_impl.h>
 #include <botan/internal/tls_reader.h>
 
+#include <array>
 
 namespace Botan {
 
@@ -19,10 +20,14 @@ namespace TLS {
 namespace {
 
 const uint64_t DOWNGRADE_TLS11 = 0x444F574E47524400;
-//const uint64_t DOWNGRADE_TLS12 = 0x444F574E47524401;
+const uint64_t DOWNGRADE_TLS12 = 0x444F574E47524401;
 
+// SHA-256("HelloRetryRequest")
+const std::array<uint8_t, 32> HELLO_RETRY_REQUEST_MARKER = {
+   0xCF, 0x21, 0xAD, 0x74, 0xE5, 0x9A, 0x61, 0x11, 0xBE, 0x1D, 0x8C, 0x02,
+   0x1E, 0x65, 0xB8, 0x91, 0xC2, 0xA2, 0x11, 0x16, 0x7A, 0xBB, 0x8C, 0x5E,
+   0x07, 0x9E, 0x09, 0xE2, 0xC8, 0xA8, 0x33, 0x9C };
 }
-
 
 class Client_Hello;
 
@@ -48,9 +53,9 @@ Server_Hello_Impl::Server_Hello_Impl(const Policy& policy,
                                      const Client_Hello& client_hello,
                                      const Server_Hello::Settings& server_settings,
                                      const std::string& next_protocol) :
-   m_version(server_settings.protocol_version()),
+   m_legacy_version(server_settings.protocol_version()),
    m_session_id(server_settings.session_id()),
-   m_random(make_server_hello_random(rng, m_version, policy)),
+   m_random(make_server_hello_random(rng, m_legacy_version, policy)),
    m_ciphersuite(server_settings.ciphersuite()),
    m_comp_method(0)
    {
@@ -77,7 +82,7 @@ Server_Hello_Impl::Server_Hello_Impl(const Policy& policy,
                                      const Client_Hello& client_hello,
                                      Session& resumed_session,
                                      const std::string& next_protocol) :
-   m_version(resumed_session.version()),
+   m_legacy_version(resumed_session.version()),
    m_session_id(client_hello.session_id()),
    m_random(make_hello_random(rng, policy)),
    m_ciphersuite(resumed_session.ciphersuite_code()),
@@ -106,7 +111,7 @@ Server_Hello_Impl::Server_Hello_Impl(const std::vector<uint8_t>& buf)
    const uint8_t major_version = reader.get_byte();
    const uint8_t minor_version = reader.get_byte();
 
-   m_version = Protocol_Version(major_version, minor_version);
+   m_legacy_version = Protocol_Version(major_version, minor_version);
 
    m_random = reader.get_fixed<uint8_t>(32);
 
@@ -124,9 +129,9 @@ Handshake_Type Server_Hello_Impl::type() const
    return SERVER_HELLO;
    }
 
-Protocol_Version Server_Hello_Impl::version() const
+Protocol_Version Server_Hello_Impl::legacy_version() const
    {
-   return m_version;
+   return m_legacy_version;
    }
 
 const std::vector<uint8_t>& Server_Hello_Impl::random() const
@@ -223,10 +228,20 @@ bool Server_Hello_Impl::prefers_compressed_ec_points() const
    return false;
    }
 
-bool Server_Hello_Impl::random_signals_downgrade() const
+std::optional<Protocol_Version> Server_Hello_Impl::random_signals_downgrade() const
    {
    const uint64_t last8 = load_be<uint64_t>(m_random.data(), 3);
-   return (last8 == DOWNGRADE_TLS11);
+   if (last8 == DOWNGRADE_TLS11)
+      return Protocol_Version::TLS_V11;
+   if (last8 == DOWNGRADE_TLS12)
+      return Protocol_Version::TLS_V12;
+
+   return std::nullopt;
+   }
+
+bool Server_Hello_Impl::random_signals_hello_retry_request() const
+   {
+   return (m_random.data() == HELLO_RETRY_REQUEST_MARKER.data());
    }
 
 /*
@@ -236,8 +251,8 @@ std::vector<uint8_t> Server_Hello_Impl::serialize() const
    {
    std::vector<uint8_t> buf;
 
-   buf.push_back(m_version.major_version());
-   buf.push_back(m_version.minor_version());
+   buf.push_back(m_legacy_version.major_version());
+   buf.push_back(m_legacy_version.minor_version());
    buf += m_random;
 
    append_tls_length_value(buf, m_session_id, 1);

@@ -31,7 +31,7 @@ Server_Hello::Server_Hello(Handshake_IO& io,
                            const Client_Hello& client_hello,
                            const Server_Hello::Settings& server_settings,
                            const std::string& next_protocol) :
-   m_impl(Message_Factory::create<Server_Hello_Impl>(client_hello.version(), io, hash, policy, cb, rng, reneg_info, client_hello, server_settings, next_protocol))
+   m_impl(Message_Factory::create<Server_Hello_Impl>(client_hello.supported_versions(), io, hash, policy, cb, rng, reneg_info, client_hello, server_settings, next_protocol))
    {
    }
 
@@ -46,7 +46,7 @@ Server_Hello::Server_Hello(Handshake_IO& io,
                            Session& resumed_session,
                            bool offer_session_ticket,
                            const std::string& next_protocol) :
-   m_impl(Message_Factory::create<Server_Hello_Impl>(client_hello.version(), io, hash, policy, cb, rng, reneg_info, client_hello, resumed_session, offer_session_ticket, next_protocol))
+   m_impl(Message_Factory::create<Server_Hello_Impl>(client_hello.supported_versions(), io, hash, policy, cb, rng, reneg_info, client_hello, resumed_session, offer_session_ticket, next_protocol))
    {
    }
 
@@ -67,9 +67,9 @@ Handshake_Type Server_Hello::type() const
    return m_impl->type();
    }
 
-Protocol_Version Server_Hello::version() const
+Protocol_Version Server_Hello::legacy_version() const
    {
-   return m_impl->version();
+   return m_impl->legacy_version();
    }
 
 const std::vector<uint8_t>& Server_Hello::random() const
@@ -147,9 +147,14 @@ bool Server_Hello::prefers_compressed_ec_points() const
    return m_impl->prefers_compressed_ec_points();
    }
 
-bool Server_Hello::random_signals_downgrade() const
+std::optional<Protocol_Version> Server_Hello::random_signals_downgrade() const
    {
    return m_impl->random_signals_downgrade();
+   }
+
+bool Server_Hello::random_signals_hello_retry_request() const
+   {
+   return m_impl->random_signals_hello_retry_request();
    }
 
 /*

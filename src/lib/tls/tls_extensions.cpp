@@ -47,6 +47,9 @@ std::unique_ptr<Extension> make_extension(TLS_Data_Reader& reader, uint16_t code
       case TLSEXT_EXTENDED_MASTER_SECRET:
          return std::make_unique<Extended_Master_Secret>(reader, size);
 
+      case TLSEXT_RECORD_SIZE_LIMIT:
+         return std::make_unique<Record_Size_Limit>(reader, size);
+
       case TLSEXT_ENCRYPT_THEN_MAC:
          return std::make_unique<Encrypt_then_MAC>(reader, size);
 
@@ -59,6 +62,9 @@ std::unique_ptr<Extension> make_extension(TLS_Data_Reader& reader, uint16_t code
 #if defined(BOTAN_HAS_TLS_13)
       case TLSEXT_COOKIE:
          return std::make_unique<Cookie>(reader, size);
+
+      case TLSEXT_PSK_KEY_EXCHANGE_MODES:
+         return std::make_unique<PSK_Key_Exchange_Modes>(reader, size);
 
       case TLSEXT_SIGNATURE_ALGORITHMS_CERT:
          return std::make_unique<Signature_Algorithms_Cert>(reader, size);
@@ -73,6 +79,17 @@ std::unique_ptr<Extension> make_extension(TLS_Data_Reader& reader, uint16_t code
    }
 
 }
+
+
+void Extensions::add(std::unique_ptr<Extension> extn)
+   {
+   if (has(extn->type()))
+      {
+      throw Invalid_Argument("cannot add the same extension twice: " + std::to_string(extn->type()));
+      }
+
+   m_extensions.emplace_back(std::move(extn.release()));
+   }
 
 void Extensions::deserialize(TLS_Data_Reader& reader, Connection_Side from)
    {
@@ -90,7 +107,7 @@ void Extensions::deserialize(TLS_Data_Reader& reader, Connection_Side from)
 
          const auto type = static_cast<Handshake_Extension_Type>(extension_code);
 
-         if(m_extensions.find(type) != m_extensions.end())
+         if(has(type))
             throw TLS_Exception(TLS::Alert::DECODE_ERROR,
                                 "Peer sent duplicated extensions");
 
@@ -99,18 +116,35 @@ void Extensions::deserialize(TLS_Data_Reader& reader, Connection_Side from)
       }
    }
 
+std::unique_ptr<Extension> Extensions::take(Handshake_Extension_Type type)
+   {
+   const auto i = std::find_if(m_extensions.begin(), m_extensions.end(),
+                               [type](const auto &ext) {
+                                  return ext->type() == type;
+                               });
+
+   std::unique_ptr<Extension> result;
+   if (i != m_extensions.end())
+      {
+      std::swap(result, *i);
+      m_extensions.erase(i);
+      }
+
+   return result;
+   }
+
 std::vector<uint8_t> Extensions::serialize(Connection_Side whoami) const
    {
    std::vector<uint8_t> buf(2); // 2 bytes for length field
 
-   for(auto& extn : m_extensions)
+   for(const auto& extn : m_extensions)
       {
-      if(extn.second->empty())
+      if(extn->empty())
          continue;
 
-      const uint16_t extn_code = static_cast<uint16_t>(extn.second->type());
+      const uint16_t extn_code = static_cast<uint16_t>(extn->type());
 
-      const std::vector<uint8_t> extn_val = extn.second->serialize(whoami);
+      const std::vector<uint8_t> extn_val = extn->serialize(whoami);
 
       buf.push_back(get_byte<0>(extn_code));
       buf.push_back(get_byte<1>(extn_code));
@@ -133,20 +167,13 @@ std::vector<uint8_t> Extensions::serialize(Connection_Side whoami) const
    return buf;
    }
 
-bool Extensions::remove_extension(Handshake_Extension_Type typ)
-   {
-   auto i = m_extensions.find(typ);
-   if(i == m_extensions.end())
-      return false;
-   m_extensions.erase(i);
-   return true;
-   }
-
 std::set<Handshake_Extension_Type> Extensions::extension_types() const
    {
    std::set<Handshake_Extension_Type> offers;
-   for(const auto& extension : m_extensions)
-      offers.insert(extension.first);
+   std::transform(m_extensions.cbegin(), m_extensions.cend(),
+                  std::inserter(offers, offers.begin()), [] (const auto &ext) {
+                     return ext->type();
+                  });
    return offers;
    }
 
@@ -631,6 +658,29 @@ bool Supported_Versions::supports(Protocol_Version version) const
    return false;
    }
 
+
+
+Record_Size_Limit::Record_Size_Limit(TLS_Data_Reader& reader, uint16_t extension_size)
+   {
+   if(extension_size != 2)
+      {
+      throw Decoding_Error("invalid record_size_limit extension");
+      }
+
+   m_limit = reader.get_uint16_t();
+}
+
+std::vector<uint8_t> Record_Size_Limit::serialize(Connection_Side) const
+   {
+   std::vector<uint8_t> buf;
+
+   buf.push_back(get_byte<0>(m_limit));
+   buf.push_back(get_byte<1>(m_limit));
+
+   return buf;
+   }
+
+
 #if defined(BOTAN_HAS_TLS_13)
 Cookie::Cookie(const std::vector<uint8_t>& cookie) :
    m_cookie(cookie)
@@ -681,6 +731,41 @@ std::vector<uint8_t> Cookie::serialize(Connection_Side /*whoami*/) const
    return buf;
    }
 
+
+std::vector<uint8_t> PSK_Key_Exchange_Modes::serialize(Connection_Side) const
+   {
+   std::vector<uint8_t> buf;
+
+   BOTAN_ASSERT_NOMSG(m_modes.size() < 256);
+   buf.push_back(static_cast<uint8_t>(m_modes.size()));
+   for (const auto& mode : m_modes)
+      {
+      buf.push_back(static_cast<uint8_t>(mode));
+      }
+
+   return buf;
+   }
+
+PSK_Key_Exchange_Modes::PSK_Key_Exchange_Modes(TLS_Data_Reader& reader, uint16_t extension_size)
+   {
+   if (extension_size < 2)
+      {
+      throw Decoding_Error("Empty psk_key_exchange_modes extension is illegal");
+      }
+
+   const auto mode_count = reader.get_byte();
+   for(uint16_t i = 0; i < mode_count; ++i)
+      {
+      const uint8_t mode = reader.get_byte();
+      if (mode != 0 && mode != 1)
+         {
+         throw Decoding_Error("Unexpected PSK mode: " + std::to_string(mode));
+         }
+
+      m_modes.push_back(PSK_Key_Exchange_Mode(mode));
+      }
+   }
+
 Signature_Algorithms_Cert::Signature_Algorithms_Cert(const std::vector<Signature_Scheme>& schemes)
       : m_siganture_algorithms(schemes)
    {
@@ -696,233 +781,5 @@ std::vector<uint8_t> Signature_Algorithms_Cert::serialize(Connection_Side whoami
       return m_siganture_algorithms.serialize(whoami);
    }
 
-Key_Share_Entry::Key_Share_Entry(Named_Group group, const std::vector<uint8_t>& key_exchange) :
-   m_group(group), m_key_exchange(key_exchange)
-   {
-      if (m_key_exchange.empty())
-      {
-      throw Decoding_Error("Size of key_exchange in KeyShareEntry must be at least 1 byte.");
-      }
-   }
-
-bool Key_Share_Entry::empty() const
-   {
-   return ((m_group == Group_Params::NONE) && m_key_exchange.empty());
-   }
-
-size_t Key_Share_Entry::size() const
-   {
-   return sizeof(m_group) + m_key_exchange.size();
-   }
-
-std::vector<uint8_t> Key_Share_Entry::serialize() const
-   {
-   std::vector<uint8_t> buf;
-   const auto group = static_cast<uint16_t>(m_group);
-   const auto key_exchange_len = static_cast<uint16_t>(m_key_exchange.size());
-
-   buf.reserve(sizeof(m_group) + sizeof(key_exchange_len) + key_exchange_len);
-
-   buf.push_back(get_byte<0>(group));
-   buf.push_back(get_byte<1>(group));
-
-   buf.push_back(get_byte<0>(key_exchange_len));
-   buf.push_back(get_byte<1>(key_exchange_len));
-
-   for (const auto& key_exchange_byte : m_key_exchange)
-      {
-      buf.push_back(key_exchange_byte);
-      }
-
-   return buf;
-   }
-
-Key_Share_ClientHello::Key_Share_ClientHello(TLS_Data_Reader& reader,
-                                             uint16_t /*extension_size*/)
-   {
-   const auto client_key_share_length = reader.get_uint16_t();
-   const auto read_bytes_so_far_begin = reader.read_so_far();
-
-   while (reader.has_remaining() and ((reader.read_so_far() - read_bytes_so_far_begin) < client_key_share_length))
-      {
-      const auto group = reader.get_uint16_t();
-      const auto key_exchange_length = reader.get_uint16_t();
-
-      if (key_exchange_length > reader.remaining_bytes())
-         {
-         throw Decoding_Error("Not enough bytes in the buffer to decode KeyShare (ClientHello) extension");
-         }
-
-      std::vector<uint8_t> client_share;
-      client_share.reserve(key_exchange_length);
-
-      for (auto i = 0u; i < key_exchange_length; ++i)
-         {
-         client_share.push_back(reader.get_byte());
-         }
-
-      m_client_shares.emplace_back(static_cast<Named_Group>(group), client_share);
-      }
-
-   if ((reader.read_so_far() - read_bytes_so_far_begin) != client_key_share_length)
-      {
-      throw Decoding_Error("Read bytes are not equal client KeyShare length");
-      }
-   }
-
-Key_Share_ClientHello::Key_Share_ClientHello(const std::vector<Key_Share_Entry>& client_shares) :
-   m_client_shares(client_shares)
-   {
-   }
-
-Key_Share_ClientHello::~Key_Share_ClientHello() = default;
-
-std::vector<uint8_t> Key_Share_ClientHello::serialize() const
-   {
-   std::vector<uint8_t> buf;
-
-   // reserve 2 first bytes for client_key_share_length
-   uint16_t client_key_share_length = 0;
-   buf.push_back(get_byte<0>(client_key_share_length));
-   buf.push_back(get_byte<1>(client_key_share_length));
-
-   for (const auto& client_share : m_client_shares)
-      {
-      const auto client_share_serialized = client_share.serialize();
-      client_key_share_length += client_share_serialized.size();
-      buf.insert(buf.end(), client_share_serialized.cbegin(), client_share_serialized.cend());
-      }
-
-   // update 2 first bytes with actual client_key_share_length
-   buf[0] = get_byte<0>(client_key_share_length);
-   buf[1] = get_byte<1>(client_key_share_length);
-
-   return buf;
-   }
-
-bool Key_Share_ClientHello::empty() const
-   {
-   return m_client_shares.empty() or all_of(m_client_shares.cbegin(), m_client_shares.cend(),
-      [](const Key_Share_Entry& key_share_entry) { return key_share_entry.empty(); });
-   }
-
-Key_Share_HelloRetryRequest::Key_Share_HelloRetryRequest(TLS_Data_Reader& reader,
-                                                         uint16_t extension_size)
-   {
-   constexpr auto sizeof_uint16_t = sizeof(uint16_t);
-
-   if (extension_size != sizeof_uint16_t)
-      {
-      throw Decoding_Error("Size of KeyShare extension in HelloRetryRequest must be " +
-         std::to_string(sizeof_uint16_t) + " bytes");
-      }
-
-   m_selected_group = static_cast<Named_Group>(reader.get_uint16_t());
-   }
-
-Key_Share_HelloRetryRequest::Key_Share_HelloRetryRequest(Named_Group selected_group) :
-   m_selected_group(selected_group)
-   {
-   }
-
-Key_Share_HelloRetryRequest::~Key_Share_HelloRetryRequest() = default;
-
-std::vector<uint8_t> Key_Share_HelloRetryRequest::serialize() const
-   {
-   return { get_byte<0>(static_cast<uint16_t>(m_selected_group)),
-            get_byte<1>(static_cast<uint16_t>(m_selected_group)) };
-   }
-
-
-bool Key_Share_HelloRetryRequest::empty() const
-   {
-   return m_selected_group == Group_Params::NONE;
-   }
-
-Key_Share_ServerHello::Key_Share_ServerHello(TLS_Data_Reader& reader,
-                                             uint16_t /*extension_size*/)
-   {
-   const auto group = reader.get_uint16_t();
-   const auto key_exchange_length = reader.get_uint16_t();
-
-   std::vector<uint8_t> server_share;
-   server_share.reserve(key_exchange_length);
-
-   if (key_exchange_length > reader.remaining_bytes())
-      {
-      throw Decoding_Error("Not enough bytes in the buffer to decode KeyShare (ServerHello) extension");
-      }
-
-   for (auto i = 0u; i < key_exchange_length; ++i)
-      {
-      server_share.push_back(reader.get_byte());
-      }
-
-   m_server_share = Key_Share_Entry(static_cast<Named_Group>(group), server_share);
-   }
-
-Key_Share_ServerHello::Key_Share_ServerHello(const Key_Share_Entry& server_share) :
-   m_server_share(server_share)
-   {
-   }
-
-Key_Share_ServerHello::~Key_Share_ServerHello() = default;
-
-std::vector<uint8_t> Key_Share_ServerHello::serialize() const
-   {
-   std::vector<uint8_t> buf;
-
-   const auto server_share_serialized = m_server_share.serialize();
-   buf.insert(buf.end(), server_share_serialized.cbegin(), server_share_serialized.cend());
-
-   return buf;
-   }
-
-bool Key_Share_ServerHello::empty() const
-   {
-   return m_server_share.empty();
-   }
-
-Key_Share::Key_Share(TLS_Data_Reader& reader,
-                     uint16_t extension_size,
-                     Connection_Side from)
-   {
-   if (from == Connection_Side::CLIENT)
-      {
-      m_content = std::make_unique<Key_Share_ClientHello>(reader, extension_size);
-      }
-   else // Connection_Side::SERVER
-      {
-      m_content = std::make_unique<Key_Share_ServerHello>(reader, extension_size);
-
-      //TODO: When to create Key_Share_HelloRetryRequest? Should be decided later, during implementation of TLS 1.3.
-      //m_content = std::make_unique<Key_Share_HelloRetryRequest>(reader, extension_size);
-      }
-   }
-
-Key_Share::Key_Share(const std::vector<Key_Share_Entry>& client_shares) :
-   m_content(std::make_unique<Key_Share_ClientHello>(client_shares))
-   {
-   }
-
-Key_Share::Key_Share(const Key_Share_Entry& server_share) :
-   m_content(std::make_unique<Key_Share_ServerHello>(server_share))
-   {
-   }
-
-Key_Share::Key_Share(Named_Group selected_group) :
-   m_content(std::make_unique<Key_Share_HelloRetryRequest>(selected_group))
-   {
-   }
-
-std::vector<uint8_t> Key_Share::serialize(Connection_Side /*whoami*/) const
-   {
-   return m_content->serialize();
-   }
-
-bool Key_Share::empty() const
-   {
-   return (m_content == nullptr) or m_content->empty();
-   }
 #endif
 }

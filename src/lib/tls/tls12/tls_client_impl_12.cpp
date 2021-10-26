@@ -20,10 +20,10 @@ namespace TLS {
 
 namespace {
 
-class Client_Handshake_State final : public Handshake_State
+class Client_Handshake_State_12 final : public Handshake_State
    {
    public:
-      Client_Handshake_State(std::unique_ptr<Handshake_IO> io, Callbacks& cb) :
+      Client_Handshake_State_12(std::unique_ptr<Handshake_IO> io, Callbacks& cb) :
          Handshake_State(std::move(io), cb),
          m_is_reneg(false)
          {}
@@ -81,13 +81,13 @@ Client_Impl_12::Client_Impl_12(Callbacks& callbacks,
 
 std::unique_ptr<Handshake_State> Client_Impl_12::new_handshake_state(std::unique_ptr<Handshake_IO> io)
    {
-   return std::make_unique<Client_Handshake_State>(std::move(io), callbacks());
+   return std::make_unique<Client_Handshake_State_12>(std::move(io), callbacks());
    }
 
 std::vector<X509_Certificate>
 Client_Impl_12::get_peer_cert_chain(const Handshake_State& state) const
    {
-   const Client_Handshake_State& cstate = dynamic_cast<const Client_Handshake_State&>(state);
+   const Client_Handshake_State_12& cstate = dynamic_cast<const Client_Handshake_State_12&>(state);
 
    if(cstate.is_a_resumption())
       return cstate.resume_peer_certs();
@@ -112,7 +112,7 @@ void Client_Impl_12::send_client_hello(Handshake_State& state_base,
                                        Protocol_Version version,
                                        const std::vector<std::string>& next_protocols)
    {
-   Client_Handshake_State& state = dynamic_cast<Client_Handshake_State&>(state_base);
+   Client_Handshake_State_12& state = dynamic_cast<Client_Handshake_State_12&>(state_base);
 
    if(state.version().is_datagram_protocol())
       state.set_expected_next(HELLO_VERIFY_REQUEST); // optional
@@ -199,7 +199,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
    {
    BOTAN_ASSERT_NOMSG(epoch0_restart == false); // only happens on server side
 
-   Client_Handshake_State& state = dynamic_cast<Client_Handshake_State&>(state_base);
+   Client_Handshake_State_12& state = dynamic_cast<Client_Handshake_State_12&>(state_base);
 
    if(type == HELLO_REQUEST && active_state)
       {
@@ -255,6 +255,12 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
       {
       state.server_hello(new Server_Hello(contents));
 
+      if(!state.server_hello()->legacy_version().valid())
+         {
+         throw TLS_Exception(Alert::PROTOCOL_VERSION,
+                             "Server replied with an invalid version");
+         }
+
       if(!state.client_hello()->offered_suite(state.server_hello()->ciphersuite()))
          {
          throw TLS_Exception(Alert::HANDSHAKE_FAILURE,
@@ -262,7 +268,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
          }
 
       if(const auto suite = Ciphersuite::by_id(state.server_hello()->ciphersuite());
-         !suite || !suite->usable_in_version(state.server_hello()->version()))
+         !suite || !suite->usable_in_version(state.server_hello()->legacy_version()))
          {
          throw TLS_Exception(Alert::HANDSHAKE_FAILURE,
                              "Server replied using a ciphersuite not allowed in version it offered");
@@ -280,9 +286,19 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
                              "Server replied with non-null compression method");
          }
 
-      if(state.client_hello()->version() > state.server_hello()->version())
+      if(state.client_hello()->legacy_version() > state.server_hello()->legacy_version())
          {
-         if(state.server_hello()->random_signals_downgrade())
+         // check for downgrade attacks
+         //
+         // RFC 8446 4.1.3.:
+         //   TLS 1.2 clients SHOULD also check that the last 8 bytes are
+         //   not equal to the [magic value DOWNGRADE_TLS11] if the ServerHello
+         //   indicates TLS 1.1 or below.  If a match is found, the client MUST
+         //   abort the handshake with an "illegal_parameter" alert.
+         //
+         // TLS 1.3 servers will still set the magic string to DOWNGRADE_TLS12. Don't abort in this case.
+         if(auto requested = state.server_hello()->random_signals_downgrade();
+            requested.has_value() && requested.value() == Protocol_Version::TLS_V11)
             throw TLS_Exception(Alert::ILLEGAL_PARAMETER, "Downgrade attack detected");
          }
 
@@ -315,7 +331,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
 
       callbacks().tls_examine_extensions(state.server_hello()->extensions(), SERVER);
 
-      state.set_version(state.server_hello()->version());
+      state.set_version(state.server_hello()->legacy_version());
       m_application_protocol = state.server_hello()->next_protocol();
 
       secure_renegotiation_check(state.server_hello());
@@ -332,7 +348,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
          * In this case, we offered the version used in the original
          * session, and the server must resume with the same version.
          */
-         if(state.server_hello()->version() != state.client_hello()->version())
+         if(state.server_hello()->legacy_version() != state.client_hello()->legacy_version())
             throw TLS_Exception(Alert::HANDSHAKE_FAILURE,
                                 "Server resumed session but with wrong version");
 
@@ -371,7 +387,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
             // even if the server creates a new session. Howerver they might change
             // in a resumption scenario.
 
-            if(active_state->version() != state.server_hello()->version())
+            if(active_state->version() != state.server_hello()->legacy_version())
                throw TLS_Exception(Alert::PROTOCOL_VERSION,
                                    "Server changed version after renegotiation");
 
@@ -385,14 +401,14 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
 
          state.resumed_session.reset(); // non-null if we were attempting a resumption
 
-         if(state.client_hello()->version().is_datagram_protocol() !=
-            state.server_hello()->version().is_datagram_protocol())
+         if(state.client_hello()->legacy_version().is_datagram_protocol() !=
+            state.server_hello()->legacy_version().is_datagram_protocol())
             {
             throw TLS_Exception(Alert::PROTOCOL_VERSION,
                                 "Server replied with different protocol type than we offered");
             }
 
-         if(state.version() > state.client_hello()->version())
+         if(state.version() > state.client_hello()->legacy_version())
             {
             throw TLS_Exception(Alert::HANDSHAKE_FAILURE,
                                 "Server replied with later version than client offered");
@@ -441,7 +457,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
       }
    else if(type == CERTIFICATE)
       {
-      state.server_certs(new Certificate(state.version(), contents, policy()));
+      state.server_certs(new Certificate_12(contents, policy()));
 
       const std::vector<X509_Certificate>& server_certs =
          state.server_certs()->cert_chain();
@@ -616,10 +632,9 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
                                     "tls-client",
                                     m_info.hostname());
 
-         state.client_certs(new Certificate(state.version(),
-                                            state.handshake_io(),
-                                            state.hash(),
-                                            client_certs));
+         state.client_certs(new Certificate_12(state.handshake_io(),
+                                               state.hash(),
+                                               client_certs));
          }
 
       state.client_kex(
@@ -643,11 +658,11 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
                                     m_info.hostname());
 
          state.client_verify(
-            new Certificate_Verify(state.handshake_io(),
-                                   state,
-                                   policy(),
-                                   rng(),
-                                   private_key)
+            new Certificate_Verify_12(state.handshake_io(),
+                                      state,
+                                      policy(),
+                                      rng(),
+                                      private_key)
             );
          }
 
@@ -680,7 +695,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
          throw TLS_Exception(Alert::UNEXPECTED_MESSAGE,
                              "Have data remaining in buffer after Finished");
 
-      state.server_finished(new Finished(state.version(), contents));
+      state.server_finished(new Finished(contents));
 
       if(!state.server_finished()->verify(state, SERVER))
          throw TLS_Exception(Alert::DECRYPT_ERROR,
@@ -706,7 +721,7 @@ void Client_Impl_12::process_handshake_msg(const Handshake_State* active_state,
       Session session_info(
          session_id,
          state.session_keys().master_secret(),
-         state.server_hello()->version(),
+         state.server_hello()->legacy_version(),
          state.server_hello()->ciphersuite(),
          CLIENT,
          state.server_hello()->supports_extended_master_secret(),

@@ -23,10 +23,9 @@ class BOTAN_PUBLIC_API(2,0) Protocol_Version final
    {
    public:
       enum Version_Code {
+         TLS_V11            = 0x0302,  // not supported by Botan
          TLS_V12            = 0x0303,
-#if defined(BOTAN_HAS_TLS_13)
          TLS_V13            = 0x0304,
-#endif
          DTLS_V12           = 0xFEFD
       };
 
@@ -70,7 +69,7 @@ class BOTAN_PUBLIC_API(2,0) Protocol_Version final
       /**
       * @return true if this is a valid protocol version
       */
-      bool valid() const { return (m_version != 0); }
+      bool valid() const;
 
       /**
       * @return true if this is a protocol version we know about
@@ -129,6 +128,22 @@ class BOTAN_PUBLIC_API(2,0) Protocol_Version final
       bool operator>=(const Protocol_Version& other) const
          {
          return (*this == other || *this > other);
+         }
+
+      /**
+      * @return if this version is earlier to other
+      */
+      bool operator<(const Protocol_Version& other) const
+         {
+         return !(*this >= other);
+         }
+
+      /**
+      * @return if this version is earlier than or equal to other
+      */
+      bool operator<=(const Protocol_Version& other) const
+         {
+         return (*this == other || *this < other);
          }
 
    private:

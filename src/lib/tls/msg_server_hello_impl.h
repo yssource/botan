@@ -49,7 +49,7 @@ class Server_Hello_Impl : public Handshake_Message
 
       Handshake_Type type() const override;
 
-      Protocol_Version version() const;
+      Protocol_Version legacy_version() const;
 
       const std::vector<uint8_t>& random() const;
 
@@ -81,14 +81,16 @@ class Server_Hello_Impl : public Handshake_Message
 
       virtual bool prefers_compressed_ec_points() const;
 
-      virtual bool random_signals_downgrade() const;
+      std::optional<Protocol_Version> random_signals_downgrade() const;
+
+      bool random_signals_hello_retry_request() const;
 
       std::vector<uint8_t> serialize() const override;
 
       std::vector<Protocol_Version> supported_versions() const;
 
    protected:
-      Protocol_Version m_version;
+      Protocol_Version m_legacy_version;
       std::vector<uint8_t> m_session_id, m_random;
       uint16_t m_ciphersuite;
       uint8_t m_comp_method;

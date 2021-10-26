@@ -10,6 +10,7 @@
 
 #include <botan/tls_messages.h>
 #include <botan/tls_version.h>
+#include <botan/tls_exceptn.h>
 #include <botan/internal/stl_util.h>
 
 #include <exception>
@@ -22,17 +23,11 @@ namespace TLS {
 
 class Client_Hello_Impl;
 class Server_Hello_Impl;
-class Finished_Impl;
-class Certificate_Verify_Impl;
 class Certificate_Req_Impl;
-class Certificate_Impl;
 
 class Server_Hello_Impl_12;
 class Client_Hello_Impl_12;
 class Certificate_Req_Impl_12;
-class Certificate_Verify_Impl_12;
-class Certificate_Impl_12;
-class Finished_Impl_12;
 
 class Client_Hello_Impl_13;
 
@@ -62,27 +57,6 @@ struct implementation_trait<Certificate_Req_Impl>
    using v13 = Certificate_Req_Impl_12;  // TODO fixme
    };
 
-template<>
-struct implementation_trait<Certificate_Verify_Impl>
-   {
-   using v12 = Certificate_Verify_Impl_12;
-   using v13 = Certificate_Verify_Impl_12;  // TODO fixme
-   };
-
-template<>
-struct implementation_trait<Certificate_Impl>
-   {
-   using v12 = Certificate_Impl_12;
-   using v13 = Certificate_Impl_12;  // TODO fixme
-   };
-
-template<>
-struct implementation_trait<Finished_Impl>
-   {
-   using v12 = Finished_Impl_12;
-   using v13 = Finished_Impl_12;  // TODO fixme
-   };
-
 }
 
 namespace Message_Factory {
@@ -101,13 +75,15 @@ std::unique_ptr<MessageBaseT> create(const Protocol_Version &protocol_version, P
      case Protocol_Version::DTLS_V12:
        return std::make_unique<typename impl_t::v12>(std::forward<ParamTs>(parameters)...);
      default:
-       BOTAN_ASSERT(false, "unexpected protocol version");
+       // TODO is this the right behavior?
+       throw TLS_Exception(Alert::PROTOCOL_VERSION, "unsupported protocol version");
      }
    }
 
 template <typename MessageBaseT, typename... ParamTs>
 std::unique_ptr<MessageBaseT> create(std::vector<Protocol_Version> supported_versions, ParamTs&&... parameters)
    {
+   // TODO: this will not work for DTLS
 #if defined(BOTAN_HAS_TLS_13)
    const auto protocol_version =
       value_exists(supported_versions, Protocol_Version(Protocol_Version::TLS_V13))

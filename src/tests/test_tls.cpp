@@ -5,11 +5,13 @@
 */
 
 #include "tests.h"
-#include <fstream>
 #include <memory>
+#include <fstream>
 
 #if defined(BOTAN_HAS_TLS)
   #include "test_rng.h"
+  #include "test_tls_utils.h"
+
   #include <botan/tls_alert.h>
   #include <botan/tls_policy.h>
   #include <botan/tls_session.h>
@@ -324,13 +326,12 @@ class Test_TLS_Policy_Text : public Test
          for(const std::string& policy : policies)
             {
             const std::string from_policy_obj = tls_policy_string(policy);
-            std::string from_file = 
+            std::string from_file =
 #if defined(BOTAN_HAS_TLS_13)
                read_tls_policy(policy + (policy == "default" || policy == "strict" ? "_tls13" : ""));
 #else
                read_tls_policy(policy);
 #endif
-            
 
             result.test_eq("Values for TLS " + policy + " policy", from_file, from_policy_obj);
             }
