@@ -11,8 +11,6 @@
 
 namespace Botan::TLS {
 
-Channel::~Channel() = default;
-
 size_t TLS::Channel::IO_BUF_DEFAULT_SIZE = 10*1024;
 
 }
