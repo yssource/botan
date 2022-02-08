@@ -8,6 +8,7 @@
 
 #include <botan/internal/os_utils.h>
 #include <botan/internal/cpuid.h>
+#include <botan/internal/sys_headers.h>
 #include <botan/exceptn.h>
 #include <botan/mem_ops.h>
 
@@ -23,19 +24,6 @@
   #include <string.h>
 #endif
 
-#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
-  #include <sys/types.h>
-  #include <sys/resource.h>
-  #include <sys/mman.h>
-  #include <signal.h>
-  #include <stdlib.h>
-  #include <setjmp.h>
-  #include <unistd.h>
-  #include <errno.h>
-  #include <termios.h>
-  #undef B0
-#endif
-
 #if defined(BOTAN_TARGET_OS_IS_EMSCRIPTEN)
   #include <emscripten/emscripten.h>
 #endif
@@ -46,25 +34,12 @@
 #endif
 
 #if defined(BOTAN_TARGET_OS_HAS_AUXINFO)
-  #include <dlfcn.h>
   #include <elf.h>
-#endif
-
-#if defined(BOTAN_TARGET_OS_HAS_WIN32)
-  #define NOMINMAX 1
-  #define _WINSOCKAPI_ // stop windows.h including winsock.h
-  #include <windows.h>
 #endif
 
 #if defined(BOTAN_TARGET_OS_IS_ANDROID)
   #include <elf.h>
   extern "C" char **environ;
-#endif
-
-#if defined(BOTAN_TARGET_OS_IS_IOS) || defined(BOTAN_TARGET_OS_IS_MACOS)
-  #include <sys/types.h>
-  #include <sys/sysctl.h>
-  #include <mach/vm_statistics.h>
 #endif
 
 namespace Botan {

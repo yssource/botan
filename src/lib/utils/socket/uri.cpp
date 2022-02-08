@@ -6,16 +6,8 @@
 
 #include <botan/internal/uri.h>
 #include <botan/exceptn.h>
-
+#include <botan/internal/sys_headers.h>
 #include <regex>
-
-#if defined(BOTAN_TARGET_OS_HAS_SOCKETS)
-   #include <arpa/inet.h>
-   #include <sys/socket.h>
-   #include <netinet/in.h>
-#elif defined(BOTAN_TARGET_OS_HAS_WINSOCK2)
-   #include <ws2tcpip.h>
-#endif
 
 #if defined(BOTAN_TARGET_OS_HAS_SOCKETS) || defined(BOTAN_TARGET_OS_HAS_WINSOCK2)
 
@@ -178,10 +170,10 @@ std::string URI::to_string() const
 
 namespace Botan {
 
-URI URI::fromDomain(const std::string&) {throw Not_Implemented("No socket support enabled in build");}
-URI URI::fromIPv4(const std::string&) {throw Not_Implemented("No socket support enabled in build");}
-URI URI::fromIPv6(const std::string&) {throw Not_Implemented("No socket support enabled in build");}
-URI URI::fromAny(const std::string&) {throw Not_Implemented("No socket support enabled in build");}
+URI URI::fromDomain(const std::string&) { throw Not_Implemented("No socket support enabled in build"); }
+URI URI::fromIPv4(const std::string&) { throw Not_Implemented("No socket support enabled in build"); }
+URI URI::fromIPv6(const std::string&) { throw Not_Implemented("No socket support enabled in build"); }
+URI URI::fromAny(const std::string&) { throw Not_Implemented("No socket support enabled in build"); }
 
 }
 

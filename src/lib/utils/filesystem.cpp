@@ -7,20 +7,11 @@
 
 #include <botan/exceptn.h>
 #include <botan/internal/filesystem.h>
+#include <botan/internal/sys_headers.h>
 #include <algorithm>
 #include <deque>
 #include <memory>
-
-#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
-  #include <sys/types.h>
-  #include <sys/stat.h>
-  #include <dirent.h>
-  #include <functional>
-#elif defined(BOTAN_TARGET_OS_HAS_WIN32)
-  #define NOMINMAX 1
-  #define _WINSOCKAPI_ // stop windows.h including winsock.h
-  #include <windows.h>
-#endif
+#include <functional>
 
 namespace Botan {
 

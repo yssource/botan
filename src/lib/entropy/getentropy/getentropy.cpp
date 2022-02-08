@@ -6,12 +6,10 @@
 */
 
 #include <botan/internal/getentropy.h>
+#include <botan/internal/sys_headers.h>
 
-#if defined(BOTAN_TARGET_OS_IS_OPENBSD) || defined(BOTAN_TARGET_OS_IS_FREEBSD) || defined(BOTAN_TARGET_OS_IS_SOLARIS)
-   #include <unistd.h>
-#else
-   #include <sys/types.h> // older macOS needs this before sys/random.h
-   #include <sys/random.h>
+#if defined(BOTAN_TARGET_OS_IS_MACOS)
+  #include <sys/random.h>
 #endif
 
 namespace Botan {

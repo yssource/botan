@@ -21,18 +21,8 @@
    #define BOOST_ASIO_DISABLE_SERIAL_PORT
    #include <boost/asio.hpp>
    #include <boost/asio/system_timer.hpp>
-#elif defined(BOTAN_TARGET_OS_HAS_SOCKETS)
-   #include <sys/socket.h>
-   #include <sys/time.h>
-   #include <netinet/in.h>
-   #include <netdb.h>
-   #include <string.h>
-   #include <unistd.h>
-   #include <errno.h>
-   #include <fcntl.h>
-
-#elif defined(BOTAN_TARGET_OS_HAS_WINSOCK2)
-   #include <ws2tcpip.h>
+#else
+   #include <botan/internal/sys_headers.h>
 #endif
 
 namespace Botan {

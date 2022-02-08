@@ -10,11 +10,7 @@
 #if defined(BOTAN_TARGET_ARCH_IS_ARM64)
 
 #include <botan/internal/os_utils.h>
-
-#if defined(BOTAN_TARGET_OS_IS_IOS) || defined(BOTAN_TARGET_OS_IS_MACOS)
-  #include <sys/types.h>
-  #include <sys/sysctl.h>
-#endif
+#include <botan/internal/sys_headers.h>
 
 namespace Botan {
 
@@ -104,11 +100,7 @@ uint64_t CPUID::CPUID_Data::detect_cpu_features(size_t* cache_line_size)
 #elif defined(BOTAN_USE_GCC_INLINE_ASM)
 
    /*
-   No getauxval API available, fall back on probe functions. We only
-   bother with Aarch64 here to simplify the code and because going to
-   extreme contortions to detect NEON on devices that probably don't
-   support it doesn't seem worthwhile.
-
+   No getauxval API available, fall back on probe functions.
    NEON registers v0-v7 are caller saved in Aarch64
    */
 

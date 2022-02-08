@@ -12,13 +12,12 @@
 #include <botan/hash.h>
 #include <botan/pkix_types.h>
 
+#include <botan/internal/sys_headers.h>
+
 #include <array>
 #include <functional>
 #include <vector>
 
-#define NOMINMAX 1
-#define _WINSOCKAPI_ // stop windows.h including winsock.h
-#include <windows.h>
 #include <wincrypt.h>
 
 #define WINCRYPT_UNUSED_PARAM 0 // for avoiding warnings when passing NULL to unused params in win32 api that accept integer types

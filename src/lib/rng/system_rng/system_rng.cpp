@@ -7,14 +7,13 @@
 */
 
 #include <botan/system_rng.h>
+#include <botan/internal/sys_headers.h>
 
 #if defined(BOTAN_TARGET_OS_HAS_RTLGENRANDOM)
   #include <botan/internal/dyn_load.h>
-  #define NOMINMAX 1
-  #define _WINSOCKAPI_ // stop windows.h including winsock.h
-  #include <windows.h>
+#endif
 
-#elif defined(BOTAN_TARGET_OS_HAS_CRYPTO_NG)
+#if defined(BOTAN_TARGET_OS_HAS_CRYPTO_NG)
   #include <bcrypt.h>
 
 #elif defined(BOTAN_TARGET_OS_HAS_CCRANDOM)
@@ -25,14 +24,6 @@
 
 #elif defined(BOTAN_TARGET_OS_HAS_GETRANDOM)
   #include <sys/random.h>
-  #include <errno.h>
-
-#elif defined(BOTAN_TARGET_OS_HAS_DEV_RANDOM)
-  #include <sys/types.h>
-  #include <sys/stat.h>
-  #include <fcntl.h>
-  #include <unistd.h>
-  #include <errno.h>
 #endif
 
 namespace Botan {

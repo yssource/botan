@@ -7,14 +7,7 @@
 
 #include <botan/internal/dyn_load.h>
 #include <botan/exceptn.h>
-
-#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
-  #include <dlfcn.h>
-#elif defined(BOTAN_TARGET_OS_HAS_WIN32)
-  #define NOMINMAX 1
-  #define _WINSOCKAPI_ // stop windows.h including winsock.h
-  #include <windows.h>
-#endif
+#include <botan/internal/sys_headers.h>
 
 namespace Botan {
 
