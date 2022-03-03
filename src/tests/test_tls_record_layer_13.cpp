@@ -508,6 +508,18 @@ read_encrypted_records()
          result.confirm("no more records", std::holds_alternative<TLS::BytesNeeded>(rl.next_record()));
          }),
 
+      CHECK("premature application data", [&](Test::Result &result)
+         {
+         auto rl = record_layer_client(true);
+         rl.copy_data(encrypted_record);
+
+         result.test_throws<Botan::TLS::TLS_Exception>("cannot process encrypted data with uninitialized cipher state",
+               "premature Application Data received", [&]
+            {
+            auto res = rl.next_record(nullptr);
+            });
+         }),
+
       CHECK("decryption fails due to bad MAC", [&](Test::Result &result)
          {
          auto tampered_encrypted_record = encrypted_record;
@@ -539,7 +551,7 @@ read_encrypted_records()
          const auto protected_ccs = Botan::hex_decode("1703030012D8EBBBE055C8167D5690EC67DEA9A525B036");
 
          result.test_throws<Botan::TLS::TLS_Exception>("illegal state causes TLS alert",
-                                                       "protected change cipher spec received", [&]
+               "protected change cipher spec received", [&]
             {
             auto cs = rfc8448_rtt1_handshake_traffic();
             auto rl = parse_records(protected_ccs);
